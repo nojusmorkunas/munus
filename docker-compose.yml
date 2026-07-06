@@ -1,6 +1,6 @@
 services:
   wishlist:
-    build: .
+    image: ghcr.io/nojusmorkunas/wishlist:latest
     ports:
       - "3967:3967"
     volumes:

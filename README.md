@@ -9,11 +9,11 @@
 ---
 
 <div align="center">
-  <img src="docs/screenshot-browse.png" width="160" alt="Browse" />
+  <img src="docs/screenshot-browse.png" width="220" alt="Browse" />
   &nbsp;&nbsp;
-  <img src="docs/screenshot-list.png" width="160" alt="Someone's list" />
+  <img src="docs/screenshot-list.png" width="220" alt="Someone's list" />
   &nbsp;&nbsp;
-  <img src="docs/screenshot-my-list.png" width="160" alt="My list" />
+  <img src="docs/screenshot-my-list.png" width="220" alt="My list" />
 </div>
 
 ## Features
@@ -31,17 +31,18 @@
 - **Admin panel**: Create users, reset passwords, and generate one-time signup links.
 - **Simple deployment**: Runs as a single binary with SQLite. Docker is supported.
 
-## Self-hosting
+## Quick start
 
-The recommended way to run Wishlist is with Docker.
+Recommended way to run Wishlist is via the Docker image ([ghcr.io/nojusmorkunas/wishlist](https://github.com/nojusmorkunas/wishlist/pkgs/container/wishlist)).
 
-### 1. Copy the example environment file
+### 1. Get the compose file and environment template
 
 ```bash
-cp .env.example .env
+curl -O https://raw.githubusercontent.com/nojusmorkunas/wishlist/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/nojusmorkunas/wishlist/main/.env.example
 ```
 
-Then edit your credentials:
+### 2. Edit your credentials
 
 ```env
 PORT=3967
@@ -53,7 +54,7 @@ ADMIN_DISPLAY_NAME=admin
 UPLOADS_PATH=/data/uploads
 ```
 
-### 2. Start Wishlist
+### 3. Start Wishlist
 
 ```bash
 docker compose up -d
