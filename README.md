@@ -1,9 +1,9 @@
 <div align="center">
-  <img src="frontend/public/icon-192.png" width="80" alt="Wishlist logo" />
+  <img src="frontend/public/munus-token-logo.png" width="80" alt="Munus logo" />
 
-  # Wishlist
+  # Munus
 
-  Wishlist is a simple self-hosted app for sharing gift ideas. Create a list, share it with friends or family, and let people claim items secretly so the surprise is kept.
+  Munus (pronounced **MOO-noos**) is a simple self-hosted app for sharing gift ideas. Create a list, share it with friends or family, and let people claim items secretly so the surprise is kept.
 </div>
 
 ---
@@ -33,7 +33,7 @@
 
 ## Quick start
 
-Recommended way to run Wishlist is via the Docker image ([ghcr.io/nojusmorkunas/wishlist](https://github.com/nojusmorkunas/wishlist/pkgs/container/wishlist)).
+The recommended way to run Munus is via the Docker image ([ghcr.io/nojusmorkunas/wishlist](https://github.com/nojusmorkunas/wishlist/pkgs/container/wishlist)).
 
 ### 1. Get the compose file and environment template
 
@@ -54,7 +54,7 @@ ADMIN_DISPLAY_NAME=admin
 UPLOADS_PATH=/data/uploads
 ```
 
-### 3. Start Wishlist
+### 3. Start Munus
 
 ```bash
 docker compose up -d
@@ -66,23 +66,23 @@ To add users, go to the **Admin** page. You can create users directly or generat
 
 ## Installing as an app
 
-Wishlist works as a PWA and can be added to your home screen on both iOS and Android.
+Munus works as a PWA and can be added to your home screen on both iOS and Android.
 
 **iOS (Safari)**
-1. Open Wishlist in Safari
+1. Open Munus in Safari
 2. Tap the Share button at the bottom of the screen
 3. Scroll down and tap **Add to Home Screen**
 4. Tap **Add**
 
 **Android (Chrome)**
-1. Open Wishlist in Chrome
+1. Open Munus in Chrome
 2. Tap the three-dot menu in the top right
 3. Tap **Add to Home screen**
 4. Tap **Add**
 
 ## Upgrading
 
-Wishlist runs database migrations automatically on startup.
+Munus runs database migrations automatically on startup.
 
 To upgrade, pull the latest image and restart:
 

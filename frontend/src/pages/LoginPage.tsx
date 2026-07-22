@@ -34,8 +34,8 @@ export default function LoginPage({ onLogin }: Props) {
     <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-background">
       <Card className="max-w-sm w-full mx-auto">
         <CardHeader className="text-center pb-2">
-          <h1 className="text-3xl font-bold tracking-tight">Wishlist</h1>
-          <p className="text-muted-foreground text-sm mt-1">Your shared wishlist</p>
+          <h1 className="text-3xl font-bold tracking-tight">Munus</h1>
+          <p className="text-muted-foreground text-sm mt-1">Private gift lists, shared safely</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,7 +1,7 @@
 {
-  "name": "Wishlist",
-  "short_name": "Wishlist",
-  "description": "A self-hosted wishlist app for sharing gift ideas.",
+  "name": "Munus",
+  "short_name": "Munus",
+  "description": "A self-hosted app for sharing gift ideas.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fff7ed",

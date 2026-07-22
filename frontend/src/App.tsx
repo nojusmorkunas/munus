@@ -53,7 +53,7 @@ function AppShell() {
     <div className="min-h-screen flex flex-col">
       <header className="border-b bg-background sticky top-0 z-40">
         <div className="flex items-center justify-between h-14 px-4 max-w-5xl mx-auto w-full gap-3">
-          <span className="font-bold text-lg tracking-tight truncate">Wishlist</span>
+          <span className="font-bold text-lg tracking-tight truncate">Munus</span>
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
               <NavLink

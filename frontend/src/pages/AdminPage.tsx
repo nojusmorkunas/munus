@@ -396,7 +396,7 @@ export default function AdminPage() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete {u.displayName}?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently delete the user, their wishlist, and all sessions.
+                            This will permanently delete the user, their gift list, and all sessions.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

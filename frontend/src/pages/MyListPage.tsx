@@ -268,7 +268,7 @@ export default function MyListPage() {
         <Button variant="outline" size="sm" onClick={copyLink} className="shrink-0 relative overflow-hidden min-h-[44px] sm:min-h-[36px]">
           <span className={`flex items-center gap-1.5 transition-all duration-200 ${copied ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"}`}>
             <Copy size={14} />
-            Share wishlist
+            Share list
           </span>
           <span className={`absolute inset-0 flex items-center justify-center gap-1.5 transition-all duration-200 ${copied ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"}`}>
             <Check size={14} className="text-green-600" />

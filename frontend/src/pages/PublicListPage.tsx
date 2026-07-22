@@ -54,7 +54,7 @@ export default function PublicListPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background sticky top-0 z-40">
         <div className="flex items-center justify-between h-14 px-4 max-w-2xl mx-auto w-full">
-          <span className="font-bold text-lg tracking-tight">Wishlist</span>
+          <span className="font-bold text-lg tracking-tight">Munus</span>
         </div>
       </header>
 
@@ -62,7 +62,7 @@ export default function PublicListPage() {
         <div className="mb-6 flex items-center gap-3">
           <UserAvatar user={listUser} className="w-12 h-12" />
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold truncate">{listUser.displayName}'s wishlist</h1>
+            <h1 className="text-2xl font-bold truncate">{listUser.displayName}'s gift list</h1>
             {days !== null && (
               <p className="text-muted-foreground text-sm mt-0.5">
                 {days === 0
