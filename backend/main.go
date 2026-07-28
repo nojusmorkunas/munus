@@ -6,16 +6,17 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	appdb "github.com/nojusmorkunas/wishlist/db"
-	"github.com/nojusmorkunas/wishlist/handlers"
+	appdb "github.com/nojusmorkunas/munus/db"
+	"github.com/nojusmorkunas/munus/handlers"
 )
 
 func main() {
 	port := getEnv("PORT", "3967")
-	dbPath := getEnv("DATABASE_PATH", "./wishlist.db")
+	dbPath := getEnv("DATABASE_PATH", "./munus.db")
 	uploadsPath := getEnv("UPLOADS_PATH", "./uploads")
 	adminUsername := getEnv("ADMIN_USERNAME", "admin")
 	adminPassword := os.Getenv("ADMIN_PASSWORD")
@@ -45,6 +46,7 @@ func main() {
 	}
 	appdb.SeedSettings(db)
 	appdb.EnsurePublicTokens(db)
+	handlers.StartAvailabilityTracker(db, getDurationEnv("AVAILABILITY_CHECK_INTERVAL", 12*time.Hour))
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -150,4 +152,17 @@ func getEnv(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func getDurationEnv(key string, fallback time.Duration) time.Duration {
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	duration, err := time.ParseDuration(value)
+	if err != nil {
+		log.Printf("warning: invalid %s %q; using %s", key, value, fallback)
+		return fallback
+	}
+	return duration
 }

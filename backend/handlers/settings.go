@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	appdb "github.com/nojusmorkunas/wishlist/db"
+	appdb "github.com/nojusmorkunas/munus/db"
 )
 
 func GetSettings(db *sql.DB) http.HandlerFunc {

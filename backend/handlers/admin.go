@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	appdb "github.com/nojusmorkunas/wishlist/db"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	appdb "github.com/nojusmorkunas/munus/db"
 )
 
 func AdminCreateSignupLink(db *sql.DB) http.HandlerFunc {

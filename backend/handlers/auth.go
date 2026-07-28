@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	appdb "github.com/nojusmorkunas/wishlist/db"
-	"github.com/nojusmorkunas/wishlist/models"
+	appdb "github.com/nojusmorkunas/munus/db"
+	"github.com/nojusmorkunas/munus/models"
 	"golang.org/x/crypto/bcrypt"
 )
 

@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { type ItemView } from "@/lib/api"
 import { useSettings } from "@/contexts/SettingsContext"
 import { formatPrice } from "@/lib/utils"
+import AvailabilityNotice from "@/components/AvailabilityNotice"
 import {
   ExternalLink,
   Gift,
@@ -125,6 +126,12 @@ export default function ItemDetailDialog({
           {item.description && (
             <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
           )}
+
+          <AvailabilityNotice
+            status={item.availabilityStatus}
+            checkedAt={item.availabilityCheckedAt}
+            detail
+          />
 
           {item.url && (
             <a

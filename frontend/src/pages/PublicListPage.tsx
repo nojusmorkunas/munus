@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import UserAvatar from "@/components/UserAvatar"
+import AvailabilityNotice from "@/components/AvailabilityNotice"
 import { ExternalLink } from "lucide-react"
 
 
@@ -102,6 +103,7 @@ export default function PublicListPage() {
                           Already claimed
                         </Badge>
                       )}
+                      <AvailabilityNotice status={item.availabilityStatus} checkedAt={item.availabilityCheckedAt} />
                     </div>
                     {item.description && (
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{item.description}</p>

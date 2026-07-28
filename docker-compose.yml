@@ -1,6 +1,6 @@
 services:
-  wishlist:
-    image: ghcr.io/nojusmorkunas/wishlist:latest
+  munus:
+    image: ghcr.io/nojusmorkunas/munus:latest
     ports:
       - "3967:3967"
     volumes:

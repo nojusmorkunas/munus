@@ -3,7 +3,7 @@ set -e
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
 
-export DATABASE_PATH="${DATABASE_PATH:-$ROOT/wishlist.db}"
+export DATABASE_PATH="${DATABASE_PATH:-$ROOT/munus.db}"
 export APP_ENV="${APP_ENV:-development}"
 export ADMIN_USERNAME="${ADMIN_USERNAME:-admin}"
 export ADMIN_PASSWORD="${ADMIN_PASSWORD:-changeme}"

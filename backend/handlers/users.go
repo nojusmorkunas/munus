@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
-	appdb "github.com/nojusmorkunas/wishlist/db"
-	"github.com/nojusmorkunas/wishlist/models"
 	"github.com/go-chi/chi/v5"
+	appdb "github.com/nojusmorkunas/munus/db"
+	"github.com/nojusmorkunas/munus/models"
 )
 
 func GetUsers(db *sql.DB) http.HandlerFunc {

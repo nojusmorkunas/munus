@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	appdb "github.com/nojusmorkunas/wishlist/db"
+	appdb "github.com/nojusmorkunas/munus/db"
 	"golang.org/x/crypto/bcrypt"
 )
 

@@ -26,6 +26,8 @@ export interface PublicItemView {
   imageUrl: string
   priority: number
   claimed: boolean
+  availabilityStatus: string
+  availabilityCheckedAt: string
 }
 
 export interface ItemView {
@@ -47,6 +49,8 @@ export interface ItemView {
   claimedByMe: boolean
   claimedByName: string
   createdAt: string
+  availabilityStatus: string
+  availabilityCheckedAt: string
 }
 
 export interface ItemInput {
@@ -144,7 +148,7 @@ export const api = {
   public: (token: string) =>
     GET<{ user: PublicUser; items: PublicItemView[] }>(`/api/public/${token}`),
   scrape: (url: string) =>
-    GET<{ name: string; description: string; price: string; image: string }>(
+    GET<{ name: string; description: string; price: string; image: string; availabilityStatus: string; availabilityCheckedAt: string }>(
       `/api/scrape?url=${encodeURIComponent(url)}`
     ),
   upload: async (file: File): Promise<string> => {

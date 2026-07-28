@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import ItemDetailDialog from "@/components/ItemDetailDialog"
 import UserAvatar from "@/components/UserAvatar"
+import AvailabilityNotice from "@/components/AvailabilityNotice"
 import { ExternalLink, Gift, Undo2, ShoppingBag, PackageCheck, Check } from "lucide-react"
 
 
@@ -148,6 +149,7 @@ export default function UserListPage() {
                         Received
                       </Badge>
                     )}
+                    <AvailabilityNotice status={item.availabilityStatus} checkedAt={item.availabilityCheckedAt} />
 {item.claimedByMe && (
                       <Badge className="text-xs bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
                         {item.isPurchased ? "Bought" : "Getting this"}

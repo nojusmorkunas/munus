@@ -4,20 +4,22 @@ import (
 	"database/sql"
 	"net/http"
 
-	appdb "github.com/nojusmorkunas/wishlist/db"
 	"github.com/go-chi/chi/v5"
+	appdb "github.com/nojusmorkunas/munus/db"
 )
 
 type publicItemView struct {
-	ID          int64  `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	URL         string `json:"url"`
-	Price       string `json:"price"`
-	Currency    string `json:"currency"`
-	ImageURL    string `json:"imageUrl"`
-	Priority    int    `json:"priority"`
-	Claimed     bool   `json:"claimed"`
+	ID                    int64  `json:"id"`
+	Name                  string `json:"name"`
+	Description           string `json:"description"`
+	URL                   string `json:"url"`
+	Price                 string `json:"price"`
+	Currency              string `json:"currency"`
+	ImageURL              string `json:"imageUrl"`
+	Priority              int    `json:"priority"`
+	Claimed               bool   `json:"claimed"`
+	AvailabilityStatus    string `json:"availabilityStatus"`
+	AvailabilityCheckedAt string `json:"availabilityCheckedAt"`
 }
 
 type publicUser struct {
@@ -42,15 +44,17 @@ func GetPublicList(db *sql.DB) http.HandlerFunc {
 		views := make([]publicItemView, len(items))
 		for i, item := range items {
 			views[i] = publicItemView{
-				ID:          item.ID,
-				Name:        item.Name,
-				Description: item.Description,
-				URL:         item.URL,
-				Price:       item.Price,
-				Currency:    item.Currency,
-				ImageURL:    item.ImageURL,
-				Priority:    item.Priority,
-				Claimed:     item.ClaimedBy != nil,
+				ID:                    item.ID,
+				Name:                  item.Name,
+				Description:           item.Description,
+				URL:                   item.URL,
+				Price:                 item.Price,
+				Currency:              item.Currency,
+				ImageURL:              item.ImageURL,
+				Priority:              item.Priority,
+				Claimed:               item.ClaimedBy != nil,
+				AvailabilityStatus:    item.AvailabilityStatus,
+				AvailabilityCheckedAt: item.AvailabilityCheckedAt,
 			}
 		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{

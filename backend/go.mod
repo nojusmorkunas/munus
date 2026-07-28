@@ -1,4 +1,4 @@
-module github.com/nojusmorkunas/wishlist
+module github.com/nojusmorkunas/munus
 
 go 1.25.0
 

@@ -6,10 +6,11 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
-	appdb "github.com/nojusmorkunas/wishlist/db"
-	"github.com/nojusmorkunas/wishlist/models"
+	appdb "github.com/nojusmorkunas/munus/db"
+	"github.com/nojusmorkunas/munus/models"
 )
 
 func itemToView(item models.Item, sessionUserID int64) models.ItemView {
@@ -22,27 +23,29 @@ func itemToView(item models.Item, sessionUserID int64) models.ItemView {
 		claimNote = item.ClaimNote
 		isPurchased = item.IsPurchased
 	} else if item.ClaimedBy != nil && !isOwner {
-		// Show claimer's name to other viewers but never to the wishlist owner
+		// Show the claimer's name to other viewers but never to the gift-list owner.
 		claimedByName = item.ClaimedByName
 	}
 	return models.ItemView{
-		ID:            item.ID,
-		UserID:        item.UserID,
-		Name:          item.Name,
-		Description:   item.Description,
-		URL:           item.URL,
-		Price:         item.Price,
-		Currency:      item.Currency,
-		ImageURL:      item.ImageURL,
-		Priority:      item.Priority,
-		ClaimNote:     claimNote,
-		IsPurchased:   isPurchased,
-		IsReceived:    item.IsReceived,
-		SortOrder:     item.SortOrder,
-		Claimed:       item.ClaimedBy != nil,
-		ClaimedByMe:   claimedByMe,
-		ClaimedByName: claimedByName,
-		CreatedAt:     item.CreatedAt,
+		ID:                    item.ID,
+		UserID:                item.UserID,
+		Name:                  item.Name,
+		Description:           item.Description,
+		URL:                   item.URL,
+		Price:                 item.Price,
+		Currency:              item.Currency,
+		ImageURL:              item.ImageURL,
+		Priority:              item.Priority,
+		ClaimNote:             claimNote,
+		IsPurchased:           isPurchased,
+		IsReceived:            item.IsReceived,
+		SortOrder:             item.SortOrder,
+		Claimed:               item.ClaimedBy != nil,
+		ClaimedByMe:           claimedByMe,
+		ClaimedByName:         claimedByName,
+		CreatedAt:             item.CreatedAt,
+		AvailabilityStatus:    item.AvailabilityStatus,
+		AvailabilityCheckedAt: item.AvailabilityCheckedAt,
 	}
 }
 
@@ -58,19 +61,21 @@ func GetMyItems(db *sql.DB) http.HandlerFunc {
 		views := make([]models.ItemView, len(items))
 		for i, item := range items {
 			views[i] = models.ItemView{
-				ID:          item.ID,
-				UserID:      item.UserID,
-				Name:        item.Name,
-				Description: item.Description,
-				URL:         item.URL,
-				Price:       item.Price,
-				Currency:    item.Currency,
-				ImageURL:    item.ImageURL,
-				Priority:    item.Priority,
-				IsReceived:  item.IsReceived,
-				IsArchived:  item.IsArchived,
-				SortOrder:   item.SortOrder,
-				CreatedAt:   item.CreatedAt,
+				ID:                    item.ID,
+				UserID:                item.UserID,
+				Name:                  item.Name,
+				Description:           item.Description,
+				URL:                   item.URL,
+				Price:                 item.Price,
+				Currency:              item.Currency,
+				ImageURL:              item.ImageURL,
+				Priority:              item.Priority,
+				IsReceived:            item.IsReceived,
+				IsArchived:            item.IsArchived,
+				SortOrder:             item.SortOrder,
+				CreatedAt:             item.CreatedAt,
+				AvailabilityStatus:    item.AvailabilityStatus,
+				AvailabilityCheckedAt: item.AvailabilityCheckedAt,
 			}
 		}
 		writeJSON(w, http.StatusOK, views)
@@ -136,6 +141,14 @@ func CreateItem(db *sql.DB) http.HandlerFunc {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
 			return
 		}
+		if status, checkedAt, ok := recentScrapeAvailability(body.URL); ok {
+			if appdb.UpdateItemAvailability(db, item.ID, body.URL, status, checkedAt) == nil {
+				item.AvailabilityStatus = status
+				item.AvailabilityCheckedAt = checkedAt.UTC().Format(time.RFC3339)
+			}
+		} else {
+			go refreshItemAvailability(db, item.ID, body.URL)
+		}
 		view := itemToView(*item, user.ID)
 		writeJSON(w, http.StatusCreated, view)
 	}
@@ -187,6 +200,14 @@ func UpdateItem(db *sql.DB) http.HandlerFunc {
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
 			return
+		}
+		if status, checkedAt, ok := recentScrapeAvailability(body.URL); ok {
+			if appdb.UpdateItemAvailability(db, item.ID, body.URL, status, checkedAt) == nil {
+				item.AvailabilityStatus = status
+				item.AvailabilityCheckedAt = checkedAt.UTC().Format(time.RFC3339)
+			}
+		} else if item.AvailabilityCheckedAt == "" {
+			go refreshItemAvailability(db, item.ID, body.URL)
 		}
 		view := itemToView(*item, user.ID)
 		writeJSON(w, http.StatusOK, view)

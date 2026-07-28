@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/nojusmorkunas/wishlist/models"
+	"github.com/nojusmorkunas/munus/models"
 	"golang.org/x/crypto/bcrypt"
 	_ "modernc.org/sqlite"
 )
@@ -68,6 +68,8 @@ var migrations = []string{
 	"ALTER TABLE users ADD COLUMN avatar_url TEXT",
 	"ALTER TABLE items ADD COLUMN currency TEXT",
 	"ALTER TABLE users ADD COLUMN public_token TEXT",
+	"ALTER TABLE items ADD COLUMN availability_status TEXT NOT NULL DEFAULT 'unknown'",
+	"ALTER TABLE items ADD COLUMN availability_checked_at TEXT",
 }
 
 func Init(path string) (*sql.DB, error) {
@@ -319,7 +321,8 @@ const itemSelect = `SELECT i.id, i.user_id, i.name,
 	COALESCE(i.description,''), COALESCE(i.url,''), COALESCE(i.price,''), COALESCE(i.image_url,''),
 	COALESCE(i.priority,0), COALESCE(i.claim_note,''), COALESCE(i.is_purchased,0),
 	COALESCE(i.is_received,0), COALESCE(i.is_archived,0), COALESCE(i.sort_order,0),
-	i.claimed_by, i.created_at, COALESCE(i.currency,''), COALESCE(u.display_name,'')
+	i.claimed_by, i.created_at, COALESCE(i.currency,''), COALESCE(u.display_name,''),
+	COALESCE(i.availability_status,'unknown'), COALESCE(i.availability_checked_at,'')
 	FROM items i LEFT JOIN users u ON i.claimed_by = u.id`
 
 func scanItem(row interface {
@@ -332,6 +335,7 @@ func scanItem(row interface {
 		&item.ID, &item.UserID, &item.Name, &item.Description, &item.URL, &item.Price, &item.ImageURL,
 		&item.Priority, &item.ClaimNote, &purchased, &received, &archived, &item.SortOrder,
 		&claimedBy, &item.CreatedAt, &item.Currency, &item.ClaimedByName,
+		&item.AvailabilityStatus, &item.AvailabilityCheckedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -384,13 +388,51 @@ func CreateItem(db *sql.DB, userID int64, name, description, url, price, currenc
 
 func UpdateItem(db *sql.DB, id int64, name, description, url, price, currency, imageURL string, priority int) (*models.Item, error) {
 	_, err := db.Exec(
-		"UPDATE items SET name = ?, description = ?, url = ?, price = ?, currency = ?, image_url = ?, priority = ? WHERE id = ?",
-		name, description, url, price, currency, imageURL, priority, id,
+		`UPDATE items SET name = ?, description = ?, url = ?, price = ?, currency = ?, image_url = ?, priority = ?,
+		 availability_status = CASE WHEN COALESCE(url,'') <> ? THEN 'unknown' ELSE availability_status END,
+		 availability_checked_at = CASE WHEN COALESCE(url,'') <> ? THEN NULL ELSE availability_checked_at END
+		 WHERE id = ?`,
+		name, description, url, price, currency, imageURL, priority, url, url, id,
 	)
 	if err != nil {
 		return nil, err
 	}
 	return getItemByID(db, id)
+}
+
+type AvailabilityCheckItem struct {
+	ID  int64
+	URL string
+}
+
+// GetItemsDueForAvailabilityCheck returns only active, unreceived items. The
+// saved URL is carried through to the update so an in-flight check cannot write
+// a result after the owner changes the link.
+func GetItemsDueForAvailabilityCheck(db *sql.DB, checkedBefore time.Time, limit int) ([]AvailabilityCheckItem, error) {
+	rows, err := db.Query(`SELECT id, url FROM items
+		WHERE COALESCE(url,'') <> '' AND COALESCE(is_archived,0) = 0 AND COALESCE(is_received,0) = 0
+		AND (availability_checked_at IS NULL OR availability_checked_at = '' OR availability_checked_at < ?)
+		ORDER BY COALESCE(availability_checked_at,'') ASC LIMIT ?`,
+		checkedBefore.UTC().Format(time.RFC3339), limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AvailabilityCheckItem
+	for rows.Next() {
+		var item AvailabilityCheckItem
+		if err := rows.Scan(&item.ID, &item.URL); err != nil {
+			return nil, err
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func UpdateItemAvailability(db *sql.DB, id int64, checkedURL, status string, checkedAt time.Time) error {
+	_, err := db.Exec(`UPDATE items SET availability_status = ?, availability_checked_at = ?
+		WHERE id = ? AND url = ?`, status, checkedAt.UTC().Format(time.RFC3339), id, checkedURL)
+	return err
 }
 
 func DeleteItem(db *sql.DB, id int64) error {

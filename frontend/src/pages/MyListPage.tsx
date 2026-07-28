@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import ItemFormDialog from "@/components/ItemFormDialog"
 import ItemDetailDialog from "@/components/ItemDetailDialog"
+import AvailabilityNotice from "@/components/AvailabilityNotice"
 import {
   ExternalLink,
   Pencil,
@@ -107,6 +108,7 @@ function SortableItemCard({
                   Received
                 </Badge>
               )}
+              <AvailabilityNotice status={item.availabilityStatus} checkedAt={item.availabilityCheckedAt} />
             </div>
           </div>
 

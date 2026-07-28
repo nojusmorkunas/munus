@@ -23,6 +23,7 @@
 - **Per-item currency**: Each item can use its own currency. Your profile currency is used by default.
 - **Photo uploads**: Add a photo to any item.
 - **Product URL import**: Paste a product URL to auto-fill the name, description, price, and image.
+- **Availability tracking**: Product links are checked periodically and cautiously flagged when that saved page appears sold out or unavailable.
 - **Drag to reorder**: Move items into the order you want.
 - **Priority levels**: Mark items as Low, Medium, or High priority.
 - **Birthday countdowns**: See how many days are left until each person's next birthday.
@@ -33,21 +34,22 @@
 
 ## Quick start
 
-The recommended way to run Munus is via the Docker image ([ghcr.io/nojusmorkunas/wishlist](https://github.com/nojusmorkunas/wishlist/pkgs/container/wishlist)).
+The recommended way to run Munus is via the Docker image ([ghcr.io/nojusmorkunas/munus](https://github.com/nojusmorkunas/munus/pkgs/container/munus)).
 
 ### 1. Get the compose file and environment template
 
 ```bash
-curl -O https://raw.githubusercontent.com/nojusmorkunas/wishlist/main/docker-compose.yml
-curl -o .env https://raw.githubusercontent.com/nojusmorkunas/wishlist/main/.env.example
+curl -O https://raw.githubusercontent.com/nojusmorkunas/munus/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/nojusmorkunas/munus/main/.env.example
 ```
 
 ### 2. Edit your credentials
 
 ```env
 PORT=3967
-DATABASE_PATH=/data/wishlist.db
+DATABASE_PATH=/data/munus.db
 APP_ENV=production
+AVAILABILITY_CHECK_INTERVAL=12h
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=replace-this-with-a-long-random-password
 ADMIN_DISPLAY_NAME=admin

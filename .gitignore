@@ -12,8 +12,8 @@ frontend/dist/
 frontend/*.tsbuildinfo
 
 # Go build output
-backend/wishlist
-wishlist
+backend/munus
+munus
 
 # Editor and OS noise
 .DS_Store
