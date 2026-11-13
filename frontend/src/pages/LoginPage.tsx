@@ -62,7 +62,7 @@ export default function LoginPage({ onLogin }: Props) {
                 required
               />
             </div>
-            <Button type="submit" className="w-full min-h-[44px]" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="animate-spin" />}
               Log in
             </Button>

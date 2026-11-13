@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { useSearchParams } from "react-router-dom"
 import {
   DndContext,
   closestCenter,
@@ -14,8 +15,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { api, type ItemView } from "@/lib/api"
-import { useAuth } from "@/App"
+import { api, type ItemInput, type ItemView } from "@/lib/api"
+import { useAuth, useSetSuggestionCount } from "@/App"
 import { daysUntilBirthday, turningAge, formatBirthday, formatPrice } from "@/lib/utils"
 import { useSettings } from "@/contexts/SettingsContext"
 import { Button } from "@/components/ui/button"
@@ -32,37 +33,44 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import ItemFormDialog from "@/components/ItemFormDialog"
+import ItemFormDialog, { type ItemFormMode } from "@/components/ItemFormDialog"
 import ItemDetailDialog from "@/components/ItemDetailDialog"
 import AvailabilityNotice from "@/components/AvailabilityNotice"
+import ItemThumb from "@/components/ItemThumb"
+import { useToast } from "@/components/Toaster"
+import { HintIcon, SuggestionHint } from "@/components/HintIcon"
+import SuggestionNote from "@/components/SuggestionNote"
 import {
   ExternalLink,
-  Pencil,
   Plus,
   Trash2,
   GripVertical,
-  Archive,
   ArchiveRestore,
   ChevronDown,
   ChevronRight,
   Copy,
   Check,
+  Lightbulb,
 } from "lucide-react"
 
+// Lets a non-button element open on Enter or Space, ignoring keys pressed on
+// buttons inside it (like a hint icon).
+function openOnKey(open: () => void) {
+  return (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget) return
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      open()
+    }
+  }
+}
 
-function SortableItemCard({
-  item,
-  onEdit,
-  onDelete,
-  onArchive,
-  onOpen,
-}: {
-  item: ItemView
-  onEdit: () => void
-  onDelete: () => void
-  onArchive: () => void
-  onOpen: () => void
-}) {
+// Android share sheets often put the link inside the shared text.
+function firstUrl(text: string | null) {
+  return text?.match(/https?:\/\/\S+/)?.[0] ?? ""
+}
+
+function SortableItemCard({ item, onOpen }: { item: ItemView; onOpen: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.id,
   })
@@ -80,23 +88,26 @@ function SortableItemCard({
             {...attributes}
             {...listeners}
             className="cursor-grab text-muted-foreground hover:text-foreground shrink-0 p-1 touch-none min-h-[44px] min-w-[28px] flex items-center justify-center"
-            tabIndex={-1}
           >
             <GripVertical size={16} />
+            <span className="sr-only">Drag to reorder</span>
           </button>
 
-          {item.imageUrl && (
-            <img
-              src={item.imageUrl}
-              alt=""
-              className="w-12 h-12 rounded-md object-cover shrink-0 bg-muted cursor-pointer"
-              onClick={onOpen}
-              onError={(e) => (e.currentTarget.style.display = "none")}
-            />
-          )}
+          <ItemThumb src={item.imageUrl} onClick={onOpen} />
 
-          <div className="flex-1 min-w-0 cursor-pointer" onClick={onOpen}>
-            <p className="font-semibold text-sm leading-tight line-clamp-1">{item.name}</p>
+          <div
+            role="button"
+            tabIndex={0}
+            className="flex-1 min-w-0 min-h-[44px] flex flex-col justify-center cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+            onClick={onOpen}
+            onKeyDown={openOnKey(onOpen)}
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="font-semibold text-sm leading-tight truncate">{item.name}</p>
+              {item.suggestedByName && (
+                <SuggestionHint name={item.suggestedByName} note={item.suggestionNote} />
+              )}
+            </div>
             <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               {item.price && (
                 <span className="text-xs text-muted-foreground">
@@ -112,57 +123,79 @@ function SortableItemCard({
             </div>
           </div>
 
-          <div className="flex items-center gap-1 shrink-0">
-            {item.url && (
-              <Button variant="ghost" size="icon" asChild className="h-9 w-9">
-                <a href={item.url} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink size={15} />
-                  <span className="sr-only">Open link</span>
-                </a>
-              </Button>
-            )}
-            <Button variant="ghost" size="icon" onClick={onEdit} className="h-9 w-9">
-              <Pencil size={15} />
-              <span className="sr-only">Edit</span>
+          {item.url && (
+            <Button variant="ghost" size="icon" asChild className="shrink-0">
+              <a href={item.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={15} />
+                <span className="sr-only">Open link</span>
+              </a>
             </Button>
-            <Button variant="ghost" size="icon" onClick={onArchive} className="h-9 w-9 text-muted-foreground hover:text-foreground">
-              <Archive size={15} />
-              <span className="sr-only">Archive</span>
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive hover:text-destructive">
-                  <Trash2 size={15} />
-                  <span className="sr-only">Delete</span>
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete item?</AlertDialogTitle>
-                  <AlertDialogDescription>"{item.name}" will be permanently removed.</AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
   )
 }
 
+function SuggestionCard({
+  item,
+  onAccept,
+  onDismiss,
+}: {
+  item: ItemView
+  onAccept: () => void
+  onDismiss: () => void
+}) {
+  const { currency, locale } = useSettings()
+  return (
+    <Card className="border-amber-200 bg-amber-50/60 dark:border-amber-900/60 dark:bg-amber-950/20">
+      <CardContent className="p-3 space-y-3">
+        <div className="flex items-center gap-2">
+          <ItemThumb src={item.imageUrl} />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-sm leading-tight truncate">{item.name}</p>
+            {item.price && (
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatPrice(item.price, locale, item.currency || currency)}
+              </p>
+            )}
+          </div>
+          {item.url && (
+            <Button variant="ghost" size="icon" asChild className="shrink-0">
+              <a href={item.url} target="_blank" rel="noopener noreferrer">
+                <ExternalLink size={15} />
+                <span className="sr-only">Open link</span>
+              </a>
+            </Button>
+          )}
+        </div>
+        <SuggestionNote name={item.suggestedByName} note={item.suggestionNote} />
+        <div className="flex gap-2">
+          <Button size="sm" onClick={onAccept} className="flex-1 sm:flex-none">
+            <Plus size={15} />
+            Add to my list
+          </Button>
+          <Button size="sm" variant="ghost" onClick={onDismiss} className="flex-1 sm:flex-none">
+            No thanks
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function MyListPage() {
   const { user } = useAuth()
+  const setSuggestionCount = useSetSuggestionCount()
+  const toast = useToast()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [items, setItems] = useState<ItemView[]>([])
   const [loading, setLoading] = useState(true)
-  const [dialogOpen, setDialogOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [formMode, setFormMode] = useState<ItemFormMode>("add")
   const [editing, setEditing] = useState<ItemView | undefined>()
-  const [detailItem, setDetailItem] = useState<ItemView | null>(null)
+  const [sharedUrl, setSharedUrl] = useState("")
+  const [detailId, setDetailId] = useState<number | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -176,26 +209,67 @@ export default function MyListPage() {
     api.items.mine().then(setItems).finally(() => setLoading(false))
   }, [])
 
-  const activeItems = items.filter((i) => !i.isArchived)
-  const archivedItems = items.filter((i) => i.isArchived)
+  // Links shared to the installed app arrive as /my-list?url=... (see share_target
+  // in the web manifest). Open the add form with that link and clear the query.
+  useEffect(() => {
+    const shared = firstUrl(searchParams.get("url")) || firstUrl(searchParams.get("text"))
+    if (!shared) return
+    setSharedUrl(shared)
+    setEditing(undefined)
+    setFormMode("add")
+    setFormOpen(true)
+    setSearchParams({}, { replace: true })
+  }, [searchParams, setSearchParams])
+
+  const suggestions = items.filter((i) => i.isPending)
+  const activeItems = items.filter((i) => !i.isPending && !i.isArchived)
+  const archivedItems = items.filter((i) => !i.isPending && i.isArchived)
+  const detailItem = items.find((i) => i.id === detailId) ?? null
+
+  useEffect(() => {
+    if (!loading) setSuggestionCount(suggestions.length)
+  }, [loading, suggestions.length, setSuggestionCount])
+
+  function patch(id: number, changes: Partial<ItemView>) {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...changes } : i)))
+  }
+
+  function failed(message: string) {
+    toast({ variant: "error", message })
+  }
 
   function openAdd() {
     setEditing(undefined)
-    setDialogOpen(true)
+    setSharedUrl("")
+    setFormMode("add")
+    setFormOpen(true)
   }
 
   function openEdit(item: ItemView) {
+    setDetailOpen(false)
     setEditing(item)
-    setDialogOpen(true)
+    setFormMode("edit")
+    setFormOpen(true)
+  }
+
+  function openAccept(item: ItemView) {
+    setEditing(item)
+    setFormMode("accept")
+    setFormOpen(true)
   }
 
   function openDetail(item: ItemView) {
-    setDetailItem(item)
+    setDetailId(item.id)
     setDetailOpen(true)
   }
 
-  async function handleSave(data: Parameters<typeof api.items.create>[0]) {
-    if (editing) {
+  async function handleSave(data: ItemInput) {
+    if (formMode === "accept" && editing) {
+      const accepted = await api.items.accept(editing.id, data)
+      // Accepted suggestions go to the top of the list, like new items.
+      setItems((prev) => [accepted, ...prev.filter((i) => i.id !== accepted.id)])
+      toast({ message: `Added “${accepted.name}” to your list` })
+    } else if (formMode === "edit" && editing) {
       const updated = await api.items.update(editing.id, data)
       setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
     } else {
@@ -204,46 +278,82 @@ export default function MyListPage() {
     }
   }
 
-  async function handleDelete(id: number) {
-    setItems((prev) => prev.filter((i) => i.id !== id))
-    api.items.delete(id)
+  function removeLocally(item: ItemView) {
+    const index = items.findIndex((i) => i.id === item.id)
+    setItems((prev) => prev.filter((i) => i.id !== item.id))
+    // Puts the item back where it was if the server says no.
+    return () =>
+      setItems((prev) =>
+        prev.some((i) => i.id === item.id) ? prev : [...prev.slice(0, index), item, ...prev.slice(index)]
+      )
   }
 
-  async function handleArchive(id: number) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, isArchived: true } : i)))
-    if (detailItem?.id === id) setDetailItem((prev) => prev ? { ...prev, isArchived: true } : null)
-    api.items.archive(id)
+  async function handleDelete(item: ItemView) {
+    setDetailOpen(false)
+    const restore = removeLocally(item)
+    try {
+      await api.items.delete(item.id)
+    } catch {
+      restore()
+      failed("Couldn't delete that. Try again.")
+    }
   }
 
-  async function handleUnarchive(id: number) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, isArchived: false } : i)))
-    if (detailItem?.id === id) setDetailItem((prev) => prev ? { ...prev, isArchived: false } : null)
-    api.items.unarchive(id)
+  function handleDismiss(item: ItemView) {
+    // The delete waits until the Undo window closes, so Undo needs no server call.
+    const restore = removeLocally(item)
+    toast({
+      message: "Suggestion dismissed",
+      action: { label: "Undo", onClick: restore },
+      onClose: () => {
+        api.items.delete(item.id).catch(() => {
+          restore()
+          failed("Couldn't dismiss that suggestion. Try again.")
+        })
+      },
+    })
   }
 
-  async function handleReceived(id: number) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, isReceived: true } : i)))
-    if (detailItem?.id === id) setDetailItem((prev) => prev ? { ...prev, isReceived: true } : null)
-    api.items.received(id)
+  async function handleArchive(item: ItemView, archived: boolean) {
+    patch(item.id, { isArchived: archived })
+    if (archived) setDetailOpen(false)
+    try {
+      await (archived ? api.items.archive(item.id) : api.items.unarchive(item.id))
+      if (archived) {
+        toast({
+          message: `Archived “${item.name}”`,
+          action: { label: "Undo", onClick: () => handleArchive(item, false) },
+        })
+      }
+    } catch {
+      patch(item.id, { isArchived: !archived })
+      failed(archived ? "Couldn't archive that. Try again." : "Couldn't restore that. Try again.")
+    }
   }
 
-  async function handleUnreceived(id: number) {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, isReceived: false } : i)))
-    if (detailItem?.id === id) setDetailItem((prev) => prev ? { ...prev, isReceived: false } : null)
-    api.items.unreceived(id)
+  async function handleReceived(item: ItemView, received: boolean) {
+    patch(item.id, { isReceived: received })
+    try {
+      await (received ? api.items.received(item.id) : api.items.unreceived(item.id))
+    } catch {
+      patch(item.id, { isReceived: !received })
+      failed("Couldn't update that. Try again.")
+    }
   }
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
     if (!over || active.id === over.id) return
+    const previous = items
     const oldIdx = activeItems.findIndex((i) => i.id === active.id)
     const newIdx = activeItems.findIndex((i) => i.id === over.id)
     const reordered = arrayMove(activeItems, oldIdx, newIdx)
-    setItems([...reordered, ...archivedItems])
+    setItems([...suggestions, ...reordered, ...archivedItems])
     try {
       await api.items.reorder(reordered.map((i) => i.id))
     } catch {
-      // optimistic; ignore failure
+      setItems(previous)
+      failed("Couldn't save the new order. Try again.")
     }
   }
 
@@ -267,7 +377,7 @@ export default function MyListPage() {
             </p>
           )}
         </div>
-        <Button variant="outline" size="sm" onClick={copyLink} className="shrink-0 relative overflow-hidden min-h-[44px] sm:min-h-[36px]">
+        <Button variant="outline" size="sm" onClick={copyLink} className="shrink-0 relative overflow-hidden">
           <span className={`flex items-center gap-1.5 transition-all duration-200 ${copied ? "opacity-0 -translate-y-2" : "opacity-100 translate-y-0"}`}>
             <Copy size={14} />
             Share list
@@ -279,7 +389,27 @@ export default function MyListPage() {
         </Button>
       </div>
 
-      <Button onClick={openAdd} className="w-full mb-5 min-h-[44px]">
+      {suggestions.length > 0 && (
+        <section className="mb-5 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold">
+            <Lightbulb size={15} className="text-amber-500" />
+            Suggested for you ({suggestions.length})
+            <HintIcon label="About suggestions">
+              Nobody else sees these until you add them to your list.
+            </HintIcon>
+          </h2>
+          {suggestions.map((item) => (
+            <SuggestionCard
+              key={item.id}
+              item={item}
+              onAccept={() => openAccept(item)}
+              onDismiss={() => handleDismiss(item)}
+            />
+          ))}
+        </section>
+      )}
+
+      <Button onClick={openAdd} className="w-full mb-5">
         <Plus size={18} />
         Add item
       </Button>
@@ -291,21 +421,17 @@ export default function MyListPage() {
           ))}
         </div>
       ) : activeItems.length === 0 && archivedItems.length === 0 ? (
-        <p className="text-center text-muted-foreground py-12">No items yet. Add something you want!</p>
+        <div className="text-center text-muted-foreground py-12 space-y-1">
+          <p className="font-medium text-foreground">Your list is empty</p>
+          <p className="text-sm">Paste a product link into Add item and the name, price and photo fill in for you.</p>
+        </div>
       ) : (
         <>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={activeItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
                 {activeItems.map((item) => (
-                  <SortableItemCard
-                    key={item.id}
-                    item={item}
-                    onEdit={() => openEdit(item)}
-                    onDelete={() => handleDelete(item.id)}
-                    onArchive={() => handleArchive(item.id)}
-                    onOpen={() => openDetail(item)}
-                  />
+                  <SortableItemCard key={item.id} item={item} onOpen={() => openDetail(item)} />
                 ))}
               </div>
             </SortableContext>
@@ -315,7 +441,7 @@ export default function MyListPage() {
             <div className="mt-6">
               <button
                 onClick={() => setShowArchived((v) => !v)}
-                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2"
+                className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-2 min-h-[36px]"
               >
                 {showArchived ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 Archived ({archivedItems.length})
@@ -325,23 +451,17 @@ export default function MyListPage() {
                   {archivedItems.map((item) => (
                     <Card key={item.id} className="opacity-60">
                       <CardContent className="p-3 flex items-center gap-2">
-                        {item.imageUrl && (
-                          <img
-                            src={item.imageUrl}
-                            alt=""
-                            className="w-10 h-10 rounded-md object-cover shrink-0 bg-muted"
-                            onError={(e) => (e.currentTarget.style.display = "none")}
-                          />
-                        )}
+                        <ItemThumb src={item.imageUrl} className="w-10 h-10" />
                         <p className="flex-1 text-sm font-medium line-clamp-1 min-w-0">{item.name}</p>
-                        <Button variant="ghost" size="icon" onClick={() => handleUnarchive(item.id)} className="h-9 w-9 shrink-0">
+                        <Button variant="ghost" size="icon" onClick={() => handleArchive(item, false)} className="shrink-0">
                           <ArchiveRestore size={15} />
                           <span className="sr-only">Unarchive</span>
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 text-destructive hover:text-destructive">
+                            <Button variant="ghost" size="icon" className="shrink-0 text-destructive hover:text-destructive">
                               <Trash2 size={15} />
+                              <span className="sr-only">Delete</span>
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
@@ -352,7 +472,7 @@ export default function MyListPage() {
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
                               <AlertDialogAction
-                                onClick={() => handleDelete(item.id)}
+                                onClick={() => handleDelete(item)}
                                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                               >
                                 Delete
@@ -371,9 +491,11 @@ export default function MyListPage() {
       )}
 
       <ItemFormDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        open={formOpen}
+        onOpenChange={setFormOpen}
+        mode={formMode}
         initial={editing}
+        initialUrl={formMode === "add" ? sharedUrl : undefined}
         onSave={handleSave}
       />
 
@@ -382,10 +504,12 @@ export default function MyListPage() {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         mode="owner"
-        onReceived={() => detailItem && handleReceived(detailItem.id)}
-        onUnreceived={() => detailItem && handleUnreceived(detailItem.id)}
-        onArchive={() => { detailItem && handleArchive(detailItem.id); setDetailOpen(false) }}
-        onUnarchive={() => detailItem && handleUnarchive(detailItem.id)}
+        onEdit={() => detailItem && openEdit(detailItem)}
+        onDelete={() => detailItem && handleDelete(detailItem)}
+        onReceived={() => detailItem && handleReceived(detailItem, true)}
+        onUnreceived={() => detailItem && handleReceived(detailItem, false)}
+        onArchive={() => detailItem && handleArchive(detailItem, true)}
+        onUnarchive={() => detailItem && handleArchive(detailItem, false)}
       />
     </div>
   )

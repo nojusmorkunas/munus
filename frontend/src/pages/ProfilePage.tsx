@@ -233,7 +233,7 @@ export default function ProfilePage() {
             </div>
             {profileError && <p className="text-sm text-destructive">{profileError}</p>}
             {profileSuccess && <p className="text-sm text-green-600">Saved.</p>}
-            <Button type="submit" disabled={profileLoading} className="min-h-[44px]">
+            <Button type="submit" disabled={profileLoading} >
               {profileLoading && <Loader2 className="animate-spin" />}
               Save changes
             </Button>
@@ -277,7 +277,7 @@ export default function ProfilePage() {
               </div>
             </div>
             {prefSuccess && <p className="text-sm text-green-600">Saved.</p>}
-            <Button type="submit" disabled={prefLoading} className="min-h-[44px]">
+            <Button type="submit" disabled={prefLoading} >
               {prefLoading && <Loader2 className="animate-spin" />}
               Save preferences
             </Button>
@@ -325,7 +325,7 @@ export default function ProfilePage() {
             </div>
             {passwordError && <p className="text-sm text-destructive">{passwordError}</p>}
             {passwordSuccess && <p className="text-sm text-green-600">Password updated.</p>}
-            <Button type="submit" disabled={passwordLoading} className="min-h-[44px]">
+            <Button type="submit" disabled={passwordLoading} >
               {passwordLoading && <Loader2 className="animate-spin" />}
               Update password
             </Button>

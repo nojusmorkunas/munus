@@ -46,6 +46,11 @@ type Item struct {
 	CreatedAt             string `json:"createdAt"`
 	AvailabilityStatus    string `json:"availabilityStatus"`
 	AvailabilityCheckedAt string `json:"availabilityCheckedAt"`
+	Details               string `json:"details"`
+	SuggestedBy           *int64 `json:"suggestedBy"`
+	SuggestedByName       string `json:"suggestedByName"`
+	IsPending             bool   `json:"isPending"`
+	SuggestionNote        string `json:"suggestionNote"`
 }
 
 type ItemView struct {
@@ -69,6 +74,14 @@ type ItemView struct {
 	CreatedAt             string `json:"createdAt"`
 	AvailabilityStatus    string `json:"availabilityStatus"`
 	AvailabilityCheckedAt string `json:"availabilityCheckedAt"`
+	// Details holds size, colour or variant choices for whoever buys the gift.
+	Details string `json:"details"`
+	// IsPending marks a suggestion the list owner has not accepted yet.
+	IsPending bool `json:"isPending"`
+	// SuggestedByName is only sent to the list owner.
+	SuggestedByName string `json:"suggestedByName"`
+	SuggestedByMe   bool   `json:"suggestedByMe"`
+	SuggestionNote  string `json:"suggestionNote"`
 }
 
 type AppSettings struct {

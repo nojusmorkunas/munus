@@ -6,12 +6,24 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { type ItemView } from "@/lib/api"
 import { useSettings } from "@/contexts/SettingsContext"
 import { formatPrice } from "@/lib/utils"
 import AvailabilityNotice from "@/components/AvailabilityNotice"
+import SuggestionNote from "@/components/SuggestionNote"
 import {
   ExternalLink,
   Gift,
@@ -22,6 +34,8 @@ import {
   Archive,
   ArchiveRestore,
   Loader2,
+  Pencil,
+  Trash2,
 } from "lucide-react"
 
 const priorityLabel = ["", "Low", "Medium", "High"] as const
@@ -37,15 +51,20 @@ interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   mode: "owner" | "viewer"
-  onClaim?: () => void
-  onUnclaim?: () => void
+  /** Whose list this is, for viewer-side wording. */
+  ownerName?: string
+  onClaim?: () => unknown
+  onUnclaim?: () => unknown
   onUpdateNote?: (note: string) => Promise<void>
-  onPurchase?: () => void
-  onUnpurchase?: () => void
-  onReceived?: () => void
-  onUnreceived?: () => void
-  onArchive?: () => void
-  onUnarchive?: () => void
+  onPurchase?: () => unknown
+  onUnpurchase?: () => unknown
+  onWithdraw?: () => void
+  onEdit?: () => void
+  onDelete?: () => void
+  onReceived?: () => unknown
+  onUnreceived?: () => unknown
+  onArchive?: () => unknown
+  onUnarchive?: () => unknown
 }
 
 export default function ItemDetailDialog({
@@ -53,11 +72,15 @@ export default function ItemDetailDialog({
   open,
   onOpenChange,
   mode,
+  ownerName,
   onClaim,
   onUnclaim,
   onUpdateNote,
   onPurchase,
   onUnpurchase,
+  onWithdraw,
+  onEdit,
+  onDelete,
   onReceived,
   onUnreceived,
   onArchive,
@@ -76,11 +99,13 @@ export default function ItemDetailDialog({
 
   if (!item) return null
 
-  async function run(key: string, fn: () => void | Promise<void>) {
+  async function run(key: string, fn: () => unknown) {
     if (busy) return
     setBusyAction(key)
     try { await fn() } finally { setBusyAction(null) }
   }
+
+  const ownerLabel = ownerName ?? "them"
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -123,8 +148,14 @@ export default function ItemDetailDialog({
             )}
           </div>
 
-          {item.description && (
-            <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+          {/* Size or colour goes first, unlabelled, so whoever buys it reads it before the shop's description. */}
+          {(item.details || item.description) && (
+            <div className="space-y-1">
+              {item.details && <p className="text-sm font-medium">{item.details}</p>}
+              {item.description && (
+                <p className="text-sm text-muted-foreground leading-relaxed">{item.description}</p>
+              )}
+            </div>
           )}
 
           <AvailabilityNotice
@@ -147,7 +178,20 @@ export default function ItemDetailDialog({
 
           {mode === "viewer" && (
             <div className="border-t pt-4 space-y-3">
-              {item.isReceived ? (
+              {item.isPending ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    You suggested this. It isn't on {ownerLabel}'s list until they add it, and nobody else can see it.
+                  </p>
+                  {item.suggestionNote && (
+                    <p className="text-sm">Your note: “{item.suggestionNote}”</p>
+                  )}
+                  <Button size="sm" variant="outline" onClick={onWithdraw} className="gap-1.5">
+                    <Undo2 size={15} />
+                    Withdraw suggestion
+                  </Button>
+                </div>
+              ) : item.isReceived ? (
                 <p className="text-sm text-green-700 dark:text-green-400 font-medium">
                   This gift has been received.
                 </p>
@@ -187,7 +231,7 @@ export default function ItemDetailDialog({
                     ) : (
                       <Button size="sm" variant="outline" disabled={busy} onClick={() => run("unpurchase", () => onUnpurchase?.())} className="gap-1.5">
                         {busyAction === "unpurchase" ? <Loader2 size={15} className="animate-spin" /> : <PackageCheck size={15} />}
-                        Unmark bought
+                        Not bought yet
                       </Button>
                     )}
                     <Button size="sm" variant="outline" disabled={busy} onClick={() => run("unclaim", () => onUnclaim?.())} className="gap-1.5">
@@ -211,30 +255,62 @@ export default function ItemDetailDialog({
             </div>
           )}
 
+          {mode === "owner" && item.suggestedByName && (
+            <SuggestionNote name={item.suggestedByName} note={item.suggestionNote} />
+          )}
+
           {mode === "owner" && (
-            <div className="border-t pt-4 flex gap-2 flex-wrap">
-              {!item.isReceived ? (
-                <Button size="sm" variant="outline" disabled={busy} onClick={() => run("received", () => onReceived?.())} className="min-h-[44px] gap-1.5 sm:min-h-0">
-                  {busyAction === "received" ? <Loader2 size={15} className="animate-spin" /> : <PackageCheck size={15} />}
-                  Mark as received
+            <div className="border-t pt-4 space-y-3">
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" variant="outline" disabled={busy} onClick={onEdit} className="gap-1.5">
+                  <Pencil size={15} />
+                  Edit
                 </Button>
-              ) : (
-                <Button size="sm" variant="outline" disabled={busy} onClick={() => run("unreceived", () => onUnreceived?.())} className="min-h-[44px] gap-1.5 sm:min-h-0">
-                  {busyAction === "unreceived" ? <Loader2 size={15} className="animate-spin" /> : <Undo2 size={15} />}
-                  Unmark received
-                </Button>
-              )}
-              {!item.isArchived ? (
-                <Button size="sm" variant="outline" disabled={busy} onClick={() => run("archive", () => onArchive?.())} className="min-h-[44px] gap-1.5 sm:min-h-0">
-                  {busyAction === "archive" ? <Loader2 size={15} className="animate-spin" /> : <Archive size={15} />}
-                  Archive
-                </Button>
-              ) : (
-                <Button size="sm" variant="outline" disabled={busy} onClick={() => run("unarchive", () => onUnarchive?.())} className="min-h-[44px] gap-1.5 sm:min-h-0">
-                  {busyAction === "unarchive" ? <Loader2 size={15} className="animate-spin" /> : <ArchiveRestore size={15} />}
-                  Unarchive
-                </Button>
-              )}
+                {!item.isReceived ? (
+                  <Button size="sm" variant="outline" disabled={busy} onClick={() => run("received", () => onReceived?.())} className="gap-1.5">
+                    {busyAction === "received" ? <Loader2 size={15} className="animate-spin" /> : <PackageCheck size={15} />}
+                    Mark as received
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" disabled={busy} onClick={() => run("unreceived", () => onUnreceived?.())} className="gap-1.5">
+                    {busyAction === "unreceived" ? <Loader2 size={15} className="animate-spin" /> : <Undo2 size={15} />}
+                    Unmark received
+                  </Button>
+                )}
+                {!item.isArchived ? (
+                  <Button size="sm" variant="outline" disabled={busy} onClick={() => run("archive", () => onArchive?.())} className="gap-1.5">
+                    {busyAction === "archive" ? <Loader2 size={15} className="animate-spin" /> : <Archive size={15} />}
+                    Archive
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" disabled={busy} onClick={() => run("unarchive", () => onUnarchive?.())} className="gap-1.5">
+                    {busyAction === "unarchive" ? <Loader2 size={15} className="animate-spin" /> : <ArchiveRestore size={15} />}
+                    Unarchive
+                  </Button>
+                )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button size="sm" variant="outline" disabled={busy} className="gap-1.5 text-destructive hover:text-destructive">
+                      <Trash2 size={15} />
+                      Delete
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete item?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        "{item.name}" will be permanently removed. If you just don't want it on your list right now, archive it instead.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
             </div>
           )}
         </div>

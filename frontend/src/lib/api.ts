@@ -28,6 +28,7 @@ export interface PublicItemView {
   claimed: boolean
   availabilityStatus: string
   availabilityCheckedAt: string
+  details: string
 }
 
 export interface ItemView {
@@ -51,6 +52,14 @@ export interface ItemView {
   createdAt: string
   availabilityStatus: string
   availabilityCheckedAt: string
+  /** Size, colour or variant the owner wants. */
+  details: string
+  /** A suggestion the list owner has not accepted yet. */
+  isPending: boolean
+  /** Who suggested the item. Only sent to the list owner. */
+  suggestedByName: string
+  suggestedByMe: boolean
+  suggestionNote: string
 }
 
 export interface ItemInput {
@@ -60,6 +69,7 @@ export interface ItemInput {
   price: string
   currency: string
   imageUrl: string
+  details: string
   priority: number
 }
 
@@ -144,6 +154,12 @@ export const api = {
     unreceived: (id: number) => DELETE_<void>(`/api/items/${id}/received`),
     archive: (id: number) => POST<void>(`/api/items/${id}/archive`, {}),
     unarchive: (id: number) => DELETE_<void>(`/api/items/${id}/archive`),
+    accept: (id: number, data: ItemInput) => POST<ItemView>(`/api/items/${id}/accept`, data),
+  },
+  suggestions: {
+    create: (userId: number, data: ItemInput & { note: string }) =>
+      POST<ItemView>(`/api/users/${userId}/suggestions`, data),
+    count: () => GET<{ count: number }>("/api/suggestions/count"),
   },
   public: (token: string) =>
     GET<{ user: PublicUser; items: PublicItemView[] }>(`/api/public/${token}`),

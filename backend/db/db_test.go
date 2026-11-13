@@ -13,7 +13,7 @@ func TestItemAvailabilityLifecycle(t *testing.T) {
 	}
 	defer database.Close()
 
-	item, err := CreateItem(database, 1, "Gift", "", "https://shop.example/item", "", "EUR", "", 0)
+	item, err := CreateItem(database, 1, ItemFields{Name: "Gift", URL: "https://shop.example/item", Currency: "EUR"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,7 +34,7 @@ func TestItemAvailabilityLifecycle(t *testing.T) {
 	}
 
 	// A result for an old URL must not overwrite the item after its link changes.
-	if _, err := UpdateItem(database, item.ID, item.Name, item.Description, "https://other.example/item", item.Price, item.Currency, item.ImageURL, item.Priority); err != nil {
+	if _, err := UpdateItem(database, item.ID, ItemFields{Name: item.Name, URL: "https://other.example/item", Currency: item.Currency}); err != nil {
 		t.Fatal(err)
 	}
 	if err := UpdateItemAvailability(database, item.ID, item.URL, "unavailable", time.Now()); err != nil {
