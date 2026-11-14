@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
 import UserAvatar from "@/components/UserAvatar"
 import { Loader2, Camera } from "lucide-react"
+import { MunusLogo } from "@/components/MunusLogo"
 
 interface Props {
   onSignup: (user: User) => void
@@ -83,7 +84,9 @@ export default function SignupPage({ onSignup }: Props) {
       <div className="min-h-screen flex items-center justify-center px-4 py-8">
         <Card className="max-w-sm w-full mx-auto">
           <CardHeader className="text-center">
-            <h1 className="text-2xl font-bold">Munus</h1>
+            <h1>
+              <MunusLogo className="h-8 mx-auto" />
+            </h1>
           </CardHeader>
           <CardContent className="text-center">
             <p className="text-muted-foreground">This signup link is invalid or has already been used.</p>
@@ -99,7 +102,9 @@ export default function SignupPage({ onSignup }: Props) {
     <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-background">
       <Card className="max-w-sm w-full mx-auto">
         <CardHeader className="text-center pb-2">
-          <h1 className="text-3xl font-bold tracking-tight">Munus</h1>
+          <h1>
+            <MunusLogo stacked className="h-24 mx-auto" />
+          </h1>
           <p className="text-muted-foreground text-sm mt-1">Create your account</p>
         </CardHeader>
         <CardContent>

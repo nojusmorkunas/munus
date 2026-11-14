@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="frontend/public/munus-token-logo.png" width="80" alt="Munus logo" />
+  <img src="docs/brand/munus-app-icon.svg" width="80" alt="Munus logo" />
 
   # Munus
 

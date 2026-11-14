@@ -9,6 +9,7 @@ import UserAvatar from "@/components/UserAvatar"
 import AvailabilityNotice from "@/components/AvailabilityNotice"
 import ItemThumb from "@/components/ItemThumb"
 import { ExternalLink } from "lucide-react"
+import { MunusLogo } from "@/components/MunusLogo"
 
 
 export default function PublicListPage() {
@@ -56,7 +57,7 @@ export default function PublicListPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b bg-background sticky top-0 z-40">
         <div className="flex items-center justify-between h-14 px-4 max-w-2xl mx-auto w-full">
-          <span className="font-bold text-lg tracking-tight">Munus</span>
+          <MunusLogo className="h-7 shrink-0" />
         </div>
       </header>
 
