@@ -21,6 +21,7 @@ import AdminPage from "@/pages/AdminPage"
 import ProfilePage from "@/pages/ProfilePage"
 import SignupPage from "@/pages/SignupPage"
 import PublicListPage from "@/pages/PublicListPage"
+import { MunusLogo } from "@/components/MunusLogo"
 
 interface AuthContextValue {
   user: User
@@ -82,7 +83,7 @@ function AppShell() {
     <div className="min-h-screen flex flex-col">
       <header className="border-b bg-background sticky top-0 z-40">
         <div className="flex items-center justify-between h-14 px-4 max-w-5xl mx-auto w-full gap-3">
-          <span className="font-bold text-lg tracking-tight truncate">Munus</span>
+          <MunusLogo className="h-7 shrink-0" />
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
               <NavLink

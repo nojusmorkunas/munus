@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2 } from "lucide-react"
+import { MunusLogo } from "@/components/MunusLogo"
 
 interface Props {
   onLogin: (user: User) => void
@@ -34,7 +35,9 @@ export default function LoginPage({ onLogin }: Props) {
     <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-background">
       <Card className="max-w-sm w-full mx-auto">
         <CardHeader className="text-center pb-2">
-          <h1 className="text-3xl font-bold tracking-tight">Munus</h1>
+          <h1>
+            <MunusLogo stacked className="h-24 mx-auto" />
+          </h1>
           <p className="text-muted-foreground text-sm mt-1">Private gift lists, shared safely</p>
         </CardHeader>
         <CardContent>
