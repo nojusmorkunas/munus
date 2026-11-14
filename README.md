@@ -1,7 +1,8 @@
 <div align="center">
-  <img src="docs/brand/munus-app-icon.svg" width="80" alt="Munus logo" />
-
-  # Munus
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/munus-logo-horizontal-on-dark.svg" />
+    <img src="docs/brand/munus-logo-horizontal.svg" height="64" alt="Munus" />
+  </picture>
 
   Munus (pronounced **MOO-noos**) is a simple self-hosted app for sharing gift ideas. Create a list, share it with friends or family, and let people claim items secretly so the surprise is kept.
 </div>

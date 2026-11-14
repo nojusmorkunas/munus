@@ -12,7 +12,7 @@ A present whose bow is a lowercase m. At a glance it's a gift; look again and it
 | `munus-logo-horizontal-on-dark.svg` | Default logo on dark backgrounds |
 | `munus-logo-stacked.svg`, `munus-logo-stacked-on-dark.svg` | Narrow or square spaces (login card, social posts) |
 | `munus-symbol.svg` | The mark alone, where the name is already nearby |
-| `munus-app-icon.svg` | Rose tile with the cream mark (README, avatars) |
+| `munus-app-icon.svg` | Rose tile with the cream mark (avatars, social previews) |
 | `munus-wordmark.svg`, `munus-wordmark-white.svg` | The name alone |
 | `*-black.svg`, `*-white.svg` | One-colour printing, engraving, stamps |
 
