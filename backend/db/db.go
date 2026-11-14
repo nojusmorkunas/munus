@@ -70,6 +70,10 @@ var migrations = []string{
 	"ALTER TABLE users ADD COLUMN public_token TEXT",
 	"ALTER TABLE items ADD COLUMN availability_status TEXT NOT NULL DEFAULT 'unknown'",
 	"ALTER TABLE items ADD COLUMN availability_checked_at TEXT",
+	"ALTER TABLE items ADD COLUMN details TEXT",
+	"ALTER TABLE items ADD COLUMN suggested_by INTEGER",
+	"ALTER TABLE items ADD COLUMN is_pending INTEGER NOT NULL DEFAULT 0",
+	"ALTER TABLE items ADD COLUMN suggestion_note TEXT",
 }
 
 func Init(path string) (*sql.DB, error) {
@@ -315,6 +319,18 @@ func DeleteSession(db *sql.DB, id string) error {
 	return err
 }
 
+// ItemFields are the parts of an item its owner (or a suggester) can edit.
+type ItemFields struct {
+	Name        string
+	Description string
+	URL         string
+	Price       string
+	Currency    string
+	ImageURL    string
+	Details     string
+	Priority    int
+}
+
 // One shared SELECT keeps the item shape the same for owner, viewer and public
 // list queries.
 const itemSelect = `SELECT i.id, i.user_id, i.name,
@@ -322,20 +338,24 @@ const itemSelect = `SELECT i.id, i.user_id, i.name,
 	COALESCE(i.priority,0), COALESCE(i.claim_note,''), COALESCE(i.is_purchased,0),
 	COALESCE(i.is_received,0), COALESCE(i.is_archived,0), COALESCE(i.sort_order,0),
 	i.claimed_by, i.created_at, COALESCE(i.currency,''), COALESCE(u.display_name,''),
-	COALESCE(i.availability_status,'unknown'), COALESCE(i.availability_checked_at,'')
-	FROM items i LEFT JOIN users u ON i.claimed_by = u.id`
+	COALESCE(i.availability_status,'unknown'), COALESCE(i.availability_checked_at,''),
+	COALESCE(i.details,''), i.suggested_by, COALESCE(s.display_name,''),
+	COALESCE(i.is_pending,0), COALESCE(i.suggestion_note,'')
+	FROM items i LEFT JOIN users u ON i.claimed_by = u.id
+	LEFT JOIN users s ON i.suggested_by = s.id`
 
 func scanItem(row interface {
 	Scan(...any) error
 }) (*models.Item, error) {
 	var item models.Item
-	var claimedBy sql.NullInt64
-	var purchased, received, archived int
+	var claimedBy, suggestedBy sql.NullInt64
+	var purchased, received, archived, pending int
 	err := row.Scan(
 		&item.ID, &item.UserID, &item.Name, &item.Description, &item.URL, &item.Price, &item.ImageURL,
 		&item.Priority, &item.ClaimNote, &purchased, &received, &archived, &item.SortOrder,
 		&claimedBy, &item.CreatedAt, &item.Currency, &item.ClaimedByName,
 		&item.AvailabilityStatus, &item.AvailabilityCheckedAt,
+		&item.Details, &suggestedBy, &item.SuggestedByName, &pending, &item.SuggestionNote,
 	)
 	if err != nil {
 		return nil, err
@@ -343,6 +363,10 @@ func scanItem(row interface {
 	if claimedBy.Valid {
 		item.ClaimedBy = &claimedBy.Int64
 	}
+	if suggestedBy.Valid {
+		item.SuggestedBy = &suggestedBy.Int64
+	}
+	item.IsPending = pending == 1
 	// SQLite stores booleans as 0/1, but the rest of the app uses bools.
 	item.IsPurchased = purchased == 1
 	item.IsReceived = received == 1
@@ -350,14 +374,39 @@ func scanItem(row interface {
 	return &item, nil
 }
 
+// GetItemsByUserID returns the items on a user's list. Pending suggestions are
+// never included: they are not on the list until the owner accepts them, so
+// viewers, share links and counts cannot see them by accident.
 func GetItemsByUserID(db *sql.DB, userID int64, includeArchived bool) ([]models.Item, error) {
-	q := itemSelect + " WHERE i.user_id = ?"
+	q := itemSelect + " WHERE i.user_id = ? AND COALESCE(i.is_pending,0) = 0"
 	if !includeArchived {
 		q += " AND i.is_archived = 0"
 	}
 	q += " ORDER BY i.sort_order ASC, i.created_at DESC"
+	return queryItems(db, q, userID)
+}
 
-	rows, err := db.Query(q, userID)
+// GetPendingSuggestions returns suggestions waiting on ownerID's decision. A
+// non-zero suggesterID limits it to the suggestions that person sent.
+func GetPendingSuggestions(db *sql.DB, ownerID, suggesterID int64) ([]models.Item, error) {
+	q := itemSelect + " WHERE i.user_id = ? AND COALESCE(i.is_pending,0) = 1"
+	args := []any{ownerID}
+	if suggesterID != 0 {
+		q += " AND i.suggested_by = ?"
+		args = append(args, suggesterID)
+	}
+	q += " ORDER BY i.created_at DESC, i.id DESC"
+	return queryItems(db, q, args...)
+}
+
+func CountPendingSuggestions(db *sql.DB, ownerID int64) (int, error) {
+	var n int
+	err := db.QueryRow("SELECT COUNT(*) FROM items WHERE user_id = ? AND COALESCE(is_pending,0) = 1", ownerID).Scan(&n)
+	return n, err
+}
+
+func queryItems(db *sql.DB, q string, args ...any) ([]models.Item, error) {
+	rows, err := db.Query(q, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -374,30 +423,60 @@ func GetItemsByUserID(db *sql.DB, userID int64, includeArchived bool) ([]models.
 	return items, rows.Err()
 }
 
-func CreateItem(db *sql.DB, userID int64, name, description, url, price, currency, imageURL string, priority int) (*models.Item, error) {
+func CreateItem(db *sql.DB, userID int64, f ItemFields) (*models.Item, error) {
 	res, err := db.Exec(
-		"INSERT INTO items (user_id, name, description, url, price, currency, image_url, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-		userID, name, description, url, price, currency, imageURL, priority,
+		"INSERT INTO items (user_id, name, description, url, price, currency, image_url, details, priority) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		userID, f.Name, f.Description, f.URL, f.Price, f.Currency, f.ImageURL, f.Details, f.Priority,
 	)
 	if err != nil {
 		return nil, err
 	}
 	id, _ := res.LastInsertId()
-	return getItemByID(db, id)
+	return GetItemByID(db, id)
 }
 
-func UpdateItem(db *sql.DB, id int64, name, description, url, price, currency, imageURL string, priority int) (*models.Item, error) {
-	_, err := db.Exec(
-		`UPDATE items SET name = ?, description = ?, url = ?, price = ?, currency = ?, image_url = ?, priority = ?,
-		 availability_status = CASE WHEN COALESCE(url,'') <> ? THEN 'unknown' ELSE availability_status END,
-		 availability_checked_at = CASE WHEN COALESCE(url,'') <> ? THEN NULL ELSE availability_checked_at END
-		 WHERE id = ?`,
-		name, description, url, price, currency, imageURL, priority, url, url, id,
+// CreateSuggestion puts an item on ownerID's list as pending. Only the owner
+// and the suggester can see it until the owner accepts it.
+func CreateSuggestion(db *sql.DB, ownerID, suggesterID int64, f ItemFields, note string) (*models.Item, error) {
+	var noteVal any
+	if note != "" {
+		noteVal = note
+	}
+	res, err := db.Exec(
+		`INSERT INTO items (user_id, name, description, url, price, currency, image_url, details, priority,
+		 suggested_by, is_pending, suggestion_note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 1, ?)`,
+		ownerID, f.Name, f.Description, f.URL, f.Price, f.Currency, f.ImageURL, f.Details, suggesterID, noteVal,
 	)
 	if err != nil {
 		return nil, err
 	}
-	return getItemByID(db, id)
+	id, _ := res.LastInsertId()
+	return GetItemByID(db, id)
+}
+
+// AcceptSuggestion moves a pending suggestion onto the owner's list, at the top.
+func AcceptSuggestion(db *sql.DB, id, ownerID int64) error {
+	_, err := db.Exec(
+		`UPDATE items SET is_pending = 0,
+		 sort_order = (SELECT COALESCE(MIN(sort_order), 0) - 1 FROM items WHERE user_id = ? AND COALESCE(is_pending,0) = 0)
+		 WHERE id = ? AND user_id = ? AND COALESCE(is_pending,0) = 1`,
+		ownerID, id, ownerID,
+	)
+	return err
+}
+
+func UpdateItem(db *sql.DB, id int64, f ItemFields) (*models.Item, error) {
+	_, err := db.Exec(
+		`UPDATE items SET name = ?, description = ?, url = ?, price = ?, currency = ?, image_url = ?, details = ?, priority = ?,
+		 availability_status = CASE WHEN COALESCE(url,'') <> ? THEN 'unknown' ELSE availability_status END,
+		 availability_checked_at = CASE WHEN COALESCE(url,'') <> ? THEN NULL ELSE availability_checked_at END
+		 WHERE id = ?`,
+		f.Name, f.Description, f.URL, f.Price, f.Currency, f.ImageURL, f.Details, f.Priority, f.URL, f.URL, id,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return GetItemByID(db, id)
 }
 
 type AvailabilityCheckItem struct {
@@ -440,13 +519,23 @@ func DeleteItem(db *sql.DB, id int64) error {
 	return err
 }
 
-func ClaimItem(db *sql.DB, itemID, claimerID int64, note string) error {
+// ClaimItem claims an unclaimed item and reports whether this call got it.
+// The claimed_by IS NULL check makes two simultaneous claims safe: only one
+// of them updates the row.
+func ClaimItem(db *sql.DB, itemID, claimerID int64, note string) (bool, error) {
 	var noteVal interface{}
 	if note != "" {
 		noteVal = note
 	}
-	_, err := db.Exec("UPDATE items SET claimed_by = ?, claim_note = ? WHERE id = ?", claimerID, noteVal, itemID)
-	return err
+	res, err := db.Exec(
+		"UPDATE items SET claimed_by = ?, claim_note = ? WHERE id = ? AND claimed_by IS NULL AND COALESCE(is_pending,0) = 0",
+		claimerID, noteVal, itemID,
+	)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n == 1, err
 }
 
 func UpdateClaimNote(db *sql.DB, itemID, claimerID int64, note string) error {
@@ -536,6 +625,7 @@ func UseSignupToken(db *sql.DB, id string) error {
 	return err
 }
 
-func getItemByID(db *sql.DB, id int64) (*models.Item, error) {
+// GetItemByID loads one item with the same shape as the list queries.
+func GetItemByID(db *sql.DB, id int64) (*models.Item, error) {
 	return scanItem(db.QueryRow(itemSelect+" WHERE i.id = ?", id))
 }

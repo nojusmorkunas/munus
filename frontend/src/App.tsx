@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react"
-import { BrowserRouter, Navigate, Route, Routes, NavLink, useNavigate } from "react-router-dom"
+import { BrowserRouter, Navigate, Route, Routes, NavLink, useLocation, useNavigate } from "react-router-dom"
 import { api, type User } from "@/lib/api"
 import { LayoutGrid, List, Settings, LogOut, User as UserIcon } from "lucide-react"
 import { SettingsProvider } from "@/contexts/SettingsContext"
 import UserAvatar from "@/components/UserAvatar"
+import { ToastProvider } from "@/components/Toaster"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,9 +35,36 @@ export function useAuth() {
   return ctx
 }
 
+// Number of suggestions waiting on the current user, shown as a badge on My List.
+const SuggestionCountContext = createContext<(count: number) => void>(() => {})
+
+export function useSetSuggestionCount() {
+  return useContext(SuggestionCountContext)
+}
+
+function CountBadge({ count, className = "" }: { count: number; className?: string }) {
+  if (count <= 0) return null
+  return (
+    <span
+      className={`min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[11px] font-semibold leading-[18px] text-center ${className}`}
+    >
+      {count > 9 ? "9+" : count}
+      <span className="sr-only"> new suggestion{count === 1 ? "" : "s"}</span>
+    </span>
+  )
+}
+
 function AppShell() {
   const { user, setUser } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [suggestionCount, setSuggestionCount] = useState(0)
+
+  useEffect(() => {
+    // Cheap enough to check on every page change, so new suggestions show up
+    // without a reload.
+    api.suggestions.count().then(({ count }) => setSuggestionCount(count)).catch(() => {})
+  }, [location.pathname])
 
   async function logout() {
     await api.auth.logout()
@@ -45,11 +73,12 @@ function AppShell() {
 
   const navItems = [
     { to: "/browse", label: "Browse", icon: <LayoutGrid size={20} /> },
-    { to: "/my-list", label: "My List", icon: <List size={20} /> },
+    { to: "/my-list", label: "My List", icon: <List size={20} />, badge: suggestionCount },
     ...(user.isAdmin ? [{ to: "/admin", label: "Admin", icon: <Settings size={20} /> }] : []),
   ]
 
   return (
+    <SuggestionCountContext.Provider value={setSuggestionCount}>
     <div className="min-h-screen flex flex-col">
       <header className="border-b bg-background sticky top-0 z-40">
         <div className="flex items-center justify-between h-14 px-4 max-w-5xl mx-auto w-full gap-3">
@@ -67,7 +96,10 @@ function AppShell() {
                   }`
                 }
               >
-                {item.label}
+                <span className="flex items-center gap-1.5">
+                  {item.label}
+                  <CountBadge count={item.badge ?? 0} />
+                </span>
               </NavLink>
             ))}
           </nav>
@@ -134,7 +166,10 @@ function AppShell() {
                       isActive ? "opacity-100" : "opacity-0"
                     }`}
                   />
-                  {item.icon}
+                  <span className="relative">
+                    {item.icon}
+                    <CountBadge count={item.badge ?? 0} className="absolute -top-1.5 -right-3" />
+                  </span>
                   {item.label}
                 </>
               )}
@@ -143,6 +178,7 @@ function AppShell() {
         </div>
       </nav>
     </div>
+    </SuggestionCountContext.Provider>
   )
 }
 
@@ -204,7 +240,9 @@ export default function App() {
     <AuthContext.Provider value={{ user, setUser }}>
       <BrowserRouter>
         <SettingsProvider>
-          <AppShell />
+          <ToastProvider>
+            <AppShell />
+          </ToastProvider>
         </SettingsProvider>
       </BrowserRouter>
     </AuthContext.Provider>

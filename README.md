@@ -21,8 +21,12 @@
 - **Secret gift claiming**: Others can claim items on your list. You cannot see who claimed them.
 - **Public share links**: Share a read-only list with people who do not have an account.
 - **Per-item currency**: Each item can use its own currency. Your profile currency is used by default.
+- **Gift suggestions**: Suggest an idea for someone else's list. Only they see it until they add it, and they pick the size or colour when they do.
+- **Size and colour**: Each item can say which size, colour or variant you want, so whoever buys it gets the right one.
+- **Undo**: Claiming, unclaiming, archiving and dismissing all come with an Undo button.
 - **Photo uploads**: Add a photo to any item.
 - **Product URL import**: Paste a product URL to auto-fill the name, description, price, and image.
+- **Share to Munus**: On Android, once Munus is installed as an app, share a product page from your browser or a shop's app straight into a new item.
 - **Availability tracking**: Product links are checked periodically and cautiously flagged when that saved page appears sold out or unavailable.
 - **Drag to reorder**: Move items into the order you want.
 - **Priority levels**: Mark items as Low, Medium, or High priority.

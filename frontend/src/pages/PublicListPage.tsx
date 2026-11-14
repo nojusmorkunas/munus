@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import UserAvatar from "@/components/UserAvatar"
 import AvailabilityNotice from "@/components/AvailabilityNotice"
+import ItemThumb from "@/components/ItemThumb"
 import { ExternalLink } from "lucide-react"
 
 
@@ -81,14 +82,7 @@ export default function PublicListPage() {
             {items.map((item) => (
               <Card key={item.id} className="transition-shadow hover:shadow-md">
                 <CardContent className="p-3 flex items-start gap-2 sm:items-center">
-                  {item.imageUrl && (
-                    <img
-                      src={item.imageUrl}
-                      alt=""
-                      className="w-12 h-12 rounded-md object-cover shrink-0 bg-muted"
-                      onError={(e) => (e.currentTarget.style.display = "none")}
-                    />
-                  )}
+                  <ItemThumb src={item.imageUrl} />
 
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm leading-tight line-clamp-1">{item.name}</p>
@@ -98,20 +92,24 @@ export default function PublicListPage() {
                           {formatPrice(item.price, navigator.language, item.currency || "EUR")}
                         </Badge>
                       )}
-{item.claimed && (
+                      {item.claimed && (
                         <Badge variant="outline" className="text-xs text-muted-foreground">
                           Already claimed
                         </Badge>
                       )}
                       <AvailabilityNotice status={item.availabilityStatus} checkedAt={item.availabilityCheckedAt} />
                     </div>
+                    {/* Share-link viewers can't open an item, so its size or colour shows here, above the description. */}
+                    {item.details && (
+                      <p className="text-xs font-medium mt-1 line-clamp-1">{item.details}</p>
+                    )}
                     {item.description && (
-                      <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{item.description}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{item.description}</p>
                     )}
                   </div>
 
                   {item.url && (
-                    <Button variant="ghost" size="icon" asChild className="h-11 w-11 shrink-0 sm:h-9 sm:w-9">
+                    <Button variant="ghost" size="icon" asChild className="shrink-0">
                       <a href={item.url} target="_blank" rel="noopener noreferrer">
                         <ExternalLink size={15} />
                         <span className="sr-only">Open link</span>

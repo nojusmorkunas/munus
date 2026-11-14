@@ -20,6 +20,7 @@ type publicItemView struct {
 	Claimed               bool   `json:"claimed"`
 	AvailabilityStatus    string `json:"availabilityStatus"`
 	AvailabilityCheckedAt string `json:"availabilityCheckedAt"`
+	Details               string `json:"details"`
 }
 
 type publicUser struct {
@@ -55,6 +56,7 @@ func GetPublicList(db *sql.DB) http.HandlerFunc {
 				Claimed:               item.ClaimedBy != nil,
 				AvailabilityStatus:    item.AvailabilityStatus,
 				AvailabilityCheckedAt: item.AvailabilityCheckedAt,
+				Details:               item.Details,
 			}
 		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{
