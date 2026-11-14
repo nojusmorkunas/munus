@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 import { useParams } from "react-router-dom"
 import { api, type User } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -7,7 +7,10 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
 import UserAvatar from "@/components/UserAvatar"
-import { Loader2, Camera } from "lucide-react"
+import AvatarPicker from "@/components/AvatarPicker"
+import { AVATAR_SHAPE, randomPresetUrl } from "@/lib/avatars"
+import { cn } from "@/lib/utils"
+import { Loader2, Pencil } from "lucide-react"
 import { MunusLogo } from "@/components/MunusLogo"
 
 interface Props {
@@ -21,11 +24,13 @@ export default function SignupPage({ onSignup }: Props) {
   const [displayName, setDisplayName] = useState("")
   const [password, setPassword] = useState("")
   const [confirm, setConfirm] = useState("")
+  // Starts on a random animal; picking one or a photo replaces it. Whatever is
+  // shown gets saved with the account.
+  const [avatarUrl, setAvatarUrl] = useState(randomPresetUrl)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
-  const [avatarPreview, setAvatarPreview] = useState("")
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!token) { setValid(false); return }
@@ -34,11 +39,15 @@ export default function SignupPage({ onSignup }: Props) {
       .catch(() => setValid(false))
   }, [token])
 
-  function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
+  function pickPreset(url: string) {
+    setAvatarFile(null)
+    setAvatarUrl(url)
+  }
+
+  function pickPhoto(file: File) {
+    // The photo is uploaded once the account exists, so show a local preview until then.
     setAvatarFile(file)
-    setAvatarPreview(URL.createObjectURL(file))
+    setAvatarUrl(URL.createObjectURL(file))
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -55,8 +64,8 @@ export default function SignupPage({ onSignup }: Props) {
     setLoading(true)
     try {
       const { user: newUser } = await api.auth.signup(token!, { username, displayName, password })
-      if (avatarFile) {
-        const url = await api.upload(avatarFile)
+      try {
+        const url = avatarFile ? await api.upload(avatarFile) : avatarUrl
         const { user: updated } = await api.profile.update({
           username: newUser.username,
           displayName: newUser.displayName,
@@ -66,7 +75,8 @@ export default function SignupPage({ onSignup }: Props) {
           avatarUrl: url,
         })
         onSignup(updated)
-      } else {
+      } catch {
+        // The account exists either way; they keep the default picture and can change it in Profile.
         onSignup(newUser)
       }
     } catch (err: unknown) {
@@ -96,7 +106,7 @@ export default function SignupPage({ onSignup }: Props) {
     )
   }
 
-  const previewUser = { displayName: displayName || "?", avatarUrl: avatarPreview }
+  const previewUser = { displayName: displayName || "?", avatarUrl }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8 bg-background">
@@ -110,29 +120,30 @@ export default function SignupPage({ onSignup }: Props) {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="flex justify-center">
-              <div className="relative">
-                <UserAvatar user={previewUser} className="w-20 h-20 text-2xl" />
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer"
-                >
-                  <Camera size={20} className="text-white" />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarSelect}
-                />
-              </div>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className={cn(AVATAR_SHAPE, "relative outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")}
+              >
+                <UserAvatar user={previewUser} className="w-20 h-20" />
+                <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border bg-background text-foreground shadow-sm">
+                  <Pencil size={13} />
+                </span>
+                <span className="sr-only">Choose a picture</span>
+              </button>
             </div>
-            {avatarPreview && (
+            {avatarFile && (
               <p className="text-xs text-center text-muted-foreground -mt-2">
                 Photo will be uploaded when you create your account
               </p>
             )}
+            <AvatarPicker
+              open={pickerOpen}
+              onOpenChange={setPickerOpen}
+              value={avatarUrl}
+              onPick={pickPreset}
+              onUpload={pickPhoto}
+            />
 
             <div className="space-y-1.5">
               <Label htmlFor="su-display">Display name</Label>

@@ -149,6 +149,7 @@ func GetUserByPublicToken(db *sql.DB, token string) (*models.User, error) {
 		return nil, err
 	}
 	u.Birthday = birthday.String
+	withDefaultAvatar(&u)
 	return &u, nil
 }
 
@@ -186,6 +187,7 @@ func GetUserByUsername(db *sql.DB, username string) (*models.User, string, error
 		return nil, "", err
 	}
 	u.Birthday = birthday.String
+	withDefaultAvatar(&u)
 	return &u, hash, nil
 }
 
@@ -200,6 +202,7 @@ func GetUserByID(db *sql.DB, id int64) (*models.User, error) {
 		return nil, err
 	}
 	u.Birthday = birthday.String
+	withDefaultAvatar(&u)
 	return &u, nil
 }
 
@@ -218,6 +221,7 @@ func GetAllUsers(db *sql.DB) ([]models.User, error) {
 			return nil, err
 		}
 		u.Birthday = birthday.String
+		withDefaultAvatar(&u)
 		users = append(users, u)
 	}
 	return users, rows.Err()
@@ -272,7 +276,9 @@ func UpdateUserProfile(db *sql.DB, userID int64, username, displayName, birthday
 	if locale != "" {
 		localeVal = locale
 	}
-	if avatarURL != "" {
+	// Sending back the default isn't a choice: the profile form re-sends whatever
+	// picture is showing. Store nothing, so the default keeps following the list.
+	if avatarURL != "" && avatarURL != DefaultAvatarURL(userID) {
 		avatarVal = avatarURL
 	}
 	_, err := db.Exec(

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useState } from "react"
 import { api } from "@/lib/api"
 import { useAuth } from "@/App"
 import { useSettings } from "@/contexts/SettingsContext"
@@ -9,7 +9,10 @@ import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
 import { Separator } from "@/components/ui/separator"
 import UserAvatar from "@/components/UserAvatar"
-import { Loader2, Camera, X } from "lucide-react"
+import AvatarPicker from "@/components/AvatarPicker"
+import { AVATAR_SHAPE } from "@/lib/avatars"
+import { cn } from "@/lib/utils"
+import { Loader2, Pencil } from "lucide-react"
 
 const selectClass =
   "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -39,8 +42,7 @@ export default function ProfilePage() {
   const [prefLoading, setPrefLoading] = useState(false)
   const [prefSuccess, setPrefSuccess] = useState(false)
 
-  const [avatarUploading, setAvatarUploading] = useState(false)
-  const avatarInputRef = useRef<HTMLInputElement>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   const [currentPassword, setCurrentPassword] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -49,35 +51,15 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState("")
   const [passwordSuccess, setPasswordSuccess] = useState(false)
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setAvatarUploading(true)
-    try {
-      const url = await api.upload(file)
-      const { user: updated } = await api.profile.update({
-        username: user.username,
-        displayName: user.displayName,
-        birthday: user.birthday ?? "",
-        currency: user.currency ?? "",
-        locale: user.locale ?? "",
-        avatarUrl: url,
-      })
-      setUser(updated)
-    } finally {
-      setAvatarUploading(false)
-      if (avatarInputRef.current) avatarInputRef.current.value = ""
-    }
-  }
-
-  async function handleRemoveAvatar() {
+  // Saves a picked preset or an uploaded photo straight away.
+  async function saveAvatar(avatarUrl: string) {
     const { user: updated } = await api.profile.update({
       username: user.username,
       displayName: user.displayName,
       birthday: user.birthday ?? "",
       currency: user.currency ?? "",
       locale: user.locale ?? "",
-      avatarUrl: "",
+      avatarUrl,
     })
     setUser(updated)
   }
@@ -158,43 +140,32 @@ export default function ProfilePage() {
       <h1 className="text-2xl font-bold">Profile</h1>
 
       <div className="flex items-center gap-4">
-        <div className="relative">
-          <UserAvatar user={user} className="w-20 h-20 text-2xl" />
-          <button
-            type="button"
-            onClick={() => avatarInputRef.current?.click()}
-            disabled={avatarUploading}
-            className="absolute inset-0 rounded-full flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity disabled:opacity-50 cursor-pointer"
-          >
-            {avatarUploading ? (
-              <Loader2 size={20} className="text-white animate-spin" />
-            ) : (
-              <Camera size={20} className="text-white" />
-            )}
-          </button>
-          <input
-            ref={avatarInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleAvatarChange}
-          />
-        </div>
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className={cn(AVATAR_SHAPE, "relative shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2")}
+        >
+          <UserAvatar user={user} className="w-20 h-20" />
+          <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border bg-background text-foreground shadow-sm">
+            <Pencil size={13} />
+          </span>
+          <span className="sr-only">Change picture</span>
+        </button>
         <div className="min-w-0 space-y-1">
           <p className="font-semibold truncate">{user.displayName}</p>
-          <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => avatarInputRef.current?.click()} disabled={avatarUploading}>
-              Change photo
-            </Button>
-            {user.avatarUrl && (
-              <Button variant="ghost" size="sm" onClick={handleRemoveAvatar} className="text-muted-foreground gap-1">
-                <X size={13} />
-                Remove
-              </Button>
-            )}
-          </div>
+          <Button variant="outline" size="sm" onClick={() => setPickerOpen(true)}>
+            Change picture
+          </Button>
         </div>
       </div>
+
+      <AvatarPicker
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        value={user.avatarUrl}
+        onPick={saveAvatar}
+        onUpload={async (file) => saveAvatar(await api.upload(file))}
+      />
 
       <Card>
         <CardHeader>
