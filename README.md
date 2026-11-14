@@ -25,6 +25,7 @@
 - **Size and colour**: Each item can say which size, colour or variant you want, so whoever buys it gets the right one.
 - **Undo**: Claiming, unclaiming, archiving and dismissing all come with an Undo button.
 - **Photo uploads**: Add a photo to any item.
+- **Profile pictures**: Everyone starts with one of 30 animal avatars. Pick a different one or upload your own photo.
 - **Product URL import**: Paste a product URL to auto-fill the name, description, price, and image.
 - **Share to Munus**: On Android, once Munus is installed as an app, share a product page from your browser or a shop's app straight into a new item.
 - **Availability tracking**: Product links are checked periodically and cautiously flagged when that saved page appears sold out or unavailable.

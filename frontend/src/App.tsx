@@ -106,7 +106,7 @@ function AppShell() {
           </nav>
           <DropdownMenu>
             <DropdownMenuTrigger className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-md hover:bg-accent transition-colors outline-none">
-              <UserAvatar user={user} className="w-7 h-7 text-sm" />
+              <UserAvatar user={user} className="w-7 h-7" />
               <span className="sr-only">Account menu</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
