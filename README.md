@@ -14,7 +14,7 @@
   &nbsp;&nbsp;
   <img src="docs/screenshot-list.png" width="220" alt="Someone's list" />
   &nbsp;&nbsp;
-  <img src="docs/screenshot-my-list.png" width="220" alt="My list" />
+  <img src="docs/screenshot-item.png" width="220" alt="An item's details" />
 </div>
 
 ## Features
