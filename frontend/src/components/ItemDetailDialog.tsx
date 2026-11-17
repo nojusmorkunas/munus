@@ -186,10 +186,16 @@ export default function ItemDetailDialog({
                   {item.suggestionNote && (
                     <p className="text-sm">Your note: “{item.suggestionNote}”</p>
                   )}
-                  <Button size="sm" variant="outline" onClick={onWithdraw} className="gap-1.5">
-                    <Undo2 size={15} />
-                    Withdraw suggestion
-                  </Button>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button size="sm" variant="outline" onClick={onEdit} className="gap-1.5">
+                      <Pencil size={15} />
+                      Edit
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={onWithdraw} className="gap-1.5">
+                      <Undo2 size={15} />
+                      Withdraw suggestion
+                    </Button>
+                  </div>
                 </div>
               ) : item.isReceived ? (
                 <p className="text-sm text-green-700 dark:text-green-400 font-medium">

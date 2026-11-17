@@ -22,9 +22,10 @@ import SuggestionNote from "@/components/SuggestionNote"
  * add: a new item on your own list.
  * edit: change one of your items.
  * suggest: propose an item for someone else's list.
+ * editSuggestion: fix your suggestion before they accept it.
  * accept: put a suggestion on your list, picking size or colour on the way.
  */
-export type ItemFormMode = "add" | "edit" | "suggest" | "accept"
+export type ItemFormMode = "add" | "edit" | "suggest" | "editSuggestion" | "accept"
 
 interface Props {
   open: boolean
@@ -51,6 +52,7 @@ const titles: Record<ItemFormMode, string> = {
   add: "Add item",
   edit: "Edit item",
   suggest: "Suggest an idea",
+  editSuggestion: "Edit suggestion",
   accept: "Add to your list",
 }
 
@@ -58,6 +60,7 @@ const saveLabels: Record<ItemFormMode, string> = {
   add: "Save",
   edit: "Save",
   suggest: "Send suggestion",
+  editSuggestion: "Save",
   accept: "Add to my list",
 }
 
@@ -71,6 +74,7 @@ export default function ItemFormDialog({
   onSave,
 }: Props) {
   const mode: ItemFormMode = modeProp ?? (initial ? "edit" : "add")
+  const suggesting = mode === "suggest" || mode === "editSuggestion"
   const { currency: preferredCurrency } = useSettings()
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -98,7 +102,7 @@ export default function ItemFormDialog({
       setCurrency(initial?.currency || preferredCurrency)
       setImageUrl(initial?.imageUrl ?? "")
       setDetails(initial?.details ?? "")
-      setNote("")
+      setNote(initial?.suggestionNote ?? "")
       setPriority(initial?.priority ?? 0)
       setError("")
       lastFetched.current = initial?.url ?? ""
@@ -188,7 +192,7 @@ export default function ItemFormDialog({
           <DialogTitle>
             {mode === "suggest" && recipientName ? `Suggest an idea for ${recipientName}` : titles[mode]}
           </DialogTitle>
-          {mode === "suggest" && (
+          {suggesting && (
             <DialogDescription>
               Only {recipientName ?? "they"} will see this. If they like it, they add it to their list and pick the size or colour.
             </DialogDescription>
@@ -249,7 +253,7 @@ export default function ItemFormDialog({
             />
           </div>
 
-          {mode !== "suggest" && (
+          {!suggesting && (
             <div className="space-y-1.5">
               <Label htmlFor="item-details">Size, colour or variant</Label>
               <Input
@@ -350,7 +354,7 @@ export default function ItemFormDialog({
             />
           </div>
 
-          {mode === "suggest" && (
+          {suggesting && (
             <div className="space-y-1.5">
               <Label htmlFor="item-note">Note to {recipientName ?? "them"} (optional)</Label>
               <Textarea

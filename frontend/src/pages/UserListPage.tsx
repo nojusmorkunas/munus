@@ -13,7 +13,7 @@ import AvailabilityNotice from "@/components/AvailabilityNotice"
 import ItemThumb from "@/components/ItemThumb"
 import { useToast } from "@/components/Toaster"
 import { HintIcon } from "@/components/HintIcon"
-import { ExternalLink, Gift, ShoppingBag, Check, Lightbulb, X } from "lucide-react"
+import { ExternalLink, Gift, ShoppingBag, Check, Lightbulb, Pencil, X } from "lucide-react"
 
 // Claim and Bought it share one width so the buttons line up down the list.
 const ROW_ACTION = "w-[6.5rem] gap-1.5"
@@ -43,6 +43,8 @@ export default function UserListPage() {
   const [detailId, setDetailId] = useState<number | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
   const [suggestOpen, setSuggestOpen] = useState(false)
+  // The pending suggestion being fixed, or null when sending a new one.
+  const [editing, setEditing] = useState<ItemView | null>(null)
   const [flashId, setFlashId] = useState<{ id: number; type: "claim" | "unclaim" } | null>(null)
 
   const userId = parseInt(id ?? "0", 10)
@@ -171,10 +173,30 @@ export default function UserListPage() {
     }
   }
 
+  function openSuggest(item: ItemView | null) {
+    setDetailOpen(false)
+    setEditing(item)
+    setSuggestOpen(true)
+  }
+
   async function handleSuggest(data: ItemInput, note: string) {
-    const created = await api.suggestions.create(userId, { ...data, note })
-    setSuggestions((prev) => [created, ...prev])
-    toast({ message: `Sent to ${ownerName}` })
+    if (!editing) {
+      const created = await api.suggestions.create(userId, { ...data, note })
+      setSuggestions((prev) => [created, ...prev])
+      toast({ message: `Sent to ${ownerName}` })
+      return
+    }
+    try {
+      const updated = await api.items.update(editing.id, { ...data, note })
+      setSuggestions((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
+      toast({ message: "Suggestion updated" })
+    } catch (e) {
+      if ((e as { status?: number }).status !== 409) throw e
+      // They accepted it while the form was open, so it's on their list now.
+      setSuggestions((prev) => prev.filter((i) => i.id !== editing.id))
+      await refresh()
+      toast({ variant: "error", message: `${ownerName} already added this, so it can't be edited any more.` })
+    }
   }
 
   function handleWithdraw(item: ItemView) {
@@ -230,7 +252,7 @@ export default function UserListPage() {
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setSuggestOpen(true)}
+          onClick={() => openSuggest(null)}
           className="shrink-0 gap-1.5"
         >
           <Lightbulb size={14} />
@@ -330,6 +352,10 @@ export default function UserListPage() {
                     </p>
                   )}
                 </button>
+                <Button variant="ghost" size="icon" onClick={() => openSuggest(item)} className="shrink-0">
+                  <Pencil size={15} />
+                  <span className="sr-only">Edit suggestion</span>
+                </Button>
                 <Button variant="ghost" size="icon" onClick={() => handleWithdraw(item)} className="shrink-0">
                   <X size={15} />
                   <span className="sr-only">Withdraw suggestion</span>
@@ -352,12 +378,14 @@ export default function UserListPage() {
         onPurchase={() => detailItem && handlePurchase(detailItem.id, true)}
         onUnpurchase={() => detailItem && handlePurchase(detailItem.id, false)}
         onWithdraw={() => detailItem && handleWithdraw(detailItem)}
+        onEdit={() => detailItem && openSuggest(detailItem)}
       />
 
       <ItemFormDialog
         open={suggestOpen}
         onOpenChange={setSuggestOpen}
-        mode="suggest"
+        mode={editing ? "editSuggestion" : "suggest"}
+        initial={editing ?? undefined}
         recipientName={ownerName}
         onSave={handleSuggest}
       />

@@ -170,6 +170,10 @@ func UpdateItem(db *sql.DB) http.HandlerFunc {
 			return
 		}
 		if meta.userID != user.ID {
+			if meta.suggestedBy != nil && *meta.suggestedBy == user.ID {
+				updateSuggestion(db, w, r, id, user.ID)
+				return
+			}
 			writeJSON(w, http.StatusForbidden, map[string]string{"error": "forbidden"})
 			return
 		}
@@ -642,6 +646,32 @@ func CreateSuggestion(db *sql.DB) http.HandlerFunc {
 		applyNewItemAvailability(db, item)
 		writeJSON(w, http.StatusCreated, itemToView(*item, user.ID))
 	}
+}
+
+// updateSuggestion is the suggester's side of PUT /items/{id}: they can fix
+// their suggestion and note until the owner accepts it.
+func updateSuggestion(db *sql.DB, w http.ResponseWriter, r *http.Request, id, suggesterID int64) {
+	var note string
+	fields, ok := decodeItemFields(w, r, &note)
+	if !ok {
+		return
+	}
+	updated, err := appdb.UpdateSuggestion(db, id, suggesterID, fields, note)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	if !updated {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "already on their list"})
+		return
+	}
+	item, err := appdb.GetItemByID(db, id)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+		return
+	}
+	applyChangedItemAvailability(db, item)
+	writeJSON(w, http.StatusOK, itemToView(*item, suggesterID))
 }
 
 // AcceptSuggestion saves the owner's edits (size, colour, the exact variant

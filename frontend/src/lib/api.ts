@@ -142,7 +142,8 @@ export const api = {
     mine: () => GET<ItemView[]>("/api/items/mine"),
     forUser: (userId: number) => GET<ItemView[]>(`/api/items/user/${userId}`),
     create: (data: ItemInput) => POST<ItemView>("/api/items", data),
-    update: (id: number, data: ItemInput) => PUT<ItemView>(`/api/items/${id}`, data),
+    /** Suggesters can also edit a pending suggestion here, note included. */
+    update: (id: number, data: ItemInput & { note?: string }) => PUT<ItemView>(`/api/items/${id}`, data),
     delete: (id: number) => DELETE_<void>(`/api/items/${id}`),
     reorder: (ids: number[]) => PUT<void>("/api/items/reorder", { ids }),
     claim: (id: number) => POST<void>(`/api/items/${id}/claim`, { note: "" }),

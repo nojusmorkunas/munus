@@ -471,6 +471,27 @@ func AcceptSuggestion(db *sql.DB, id, ownerID int64) error {
 	return err
 }
 
+// UpdateSuggestion lets the suggester fix a suggestion. It returns false once
+// the owner has accepted it, since from then on the item is theirs.
+func UpdateSuggestion(db *sql.DB, id, suggesterID int64, f ItemFields, note string) (bool, error) {
+	var noteVal any
+	if note != "" {
+		noteVal = note
+	}
+	res, err := db.Exec(
+		`UPDATE items SET name = ?, description = ?, url = ?, price = ?, currency = ?, image_url = ?, suggestion_note = ?,
+		 availability_status = CASE WHEN COALESCE(url,'') <> ? THEN 'unknown' ELSE availability_status END,
+		 availability_checked_at = CASE WHEN COALESCE(url,'') <> ? THEN NULL ELSE availability_checked_at END
+		 WHERE id = ? AND suggested_by = ? AND COALESCE(is_pending,0) = 1`,
+		f.Name, f.Description, f.URL, f.Price, f.Currency, f.ImageURL, noteVal, f.URL, f.URL, id, suggesterID,
+	)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n == 1, err
+}
+
 func UpdateItem(db *sql.DB, id int64, f ItemFields) (*models.Item, error) {
 	_, err := db.Exec(
 		`UPDATE items SET name = ?, description = ?, url = ?, price = ?, currency = ?, image_url = ?, details = ?, priority = ?,

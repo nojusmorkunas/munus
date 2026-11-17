@@ -44,6 +44,7 @@ func testServer(t *testing.T) (*sql.DB, http.Handler) {
 		r.Get("/api/items/mine", GetMyItems(db))
 		r.Get("/api/items/user/{userId}", GetUserItems(db))
 		r.Post("/api/items", CreateItem(db))
+		r.Put("/api/items/{id}", UpdateItem(db))
 		r.Delete("/api/items/{id}", DeleteItem(db))
 		r.Post("/api/items/{id}/claim", ClaimItem(db))
 		r.Post("/api/items/{id}/accept", AcceptSuggestion(db))
@@ -150,9 +151,22 @@ func TestSuggestionLifecycle(t *testing.T) {
 		t.Fatalf("suggester's view while pending: %+v", got)
 	}
 
-	// While pending: nobody can claim it, other people can't remove it, and
-	// only Emma can accept it.
+	// Alex can fix a mistake while it waits, and details stay Emma's to pick.
+	rec = call(t, h, alex, "PUT", fmt.Sprintf("/api/items/%d", suggestion.ID), map[string]any{
+		"name": "Wool sweater", "price": "85", "note": "In navy if they have it", "details": "ignored",
+	})
+	expectStatus(t, rec, http.StatusOK, "suggester edit")
+	if edited := decode[models.ItemView](t, rec); !edited.IsPending || edited.Price != "85" || edited.SuggestionNote != "In navy if they have it" || edited.Details != "" {
+		t.Fatalf("edited suggestion: %+v", edited)
+	}
+	if got := findItem(decode[[]models.ItemView](t, call(t, h, emma, "GET", "/api/items/mine", nil)), suggestion.ID); got == nil || got.Price != "85" || got.SuggestionNote != "In navy if they have it" {
+		t.Fatalf("owner's view after suggester edit: %+v", got)
+	}
+
+	// While pending: nobody can claim it, other people can't edit or remove it,
+	// and only Emma can accept it.
 	expectStatus(t, call(t, h, lukas, "POST", fmt.Sprintf("/api/items/%d/claim", suggestion.ID), nil), http.StatusConflict, "claim pending")
+	expectStatus(t, call(t, h, lukas, "PUT", fmt.Sprintf("/api/items/%d", suggestion.ID), map[string]any{"name": "x"}), http.StatusForbidden, "third party edit")
 	expectStatus(t, call(t, h, lukas, "DELETE", fmt.Sprintf("/api/items/%d", suggestion.ID), nil), http.StatusForbidden, "third party delete")
 	expectStatus(t, call(t, h, alex, "POST", fmt.Sprintf("/api/items/%d/accept", suggestion.ID), map[string]any{"name": "x"}), http.StatusForbidden, "suggester accept")
 
@@ -187,6 +201,10 @@ func TestSuggestionLifecycle(t *testing.T) {
 	}
 	// Once accepted it belongs to Emma, so Alex can't withdraw it any more.
 	expectStatus(t, call(t, h, alex, "DELETE", fmt.Sprintf("/api/items/%d", suggestion.ID), nil), http.StatusForbidden, "withdraw after accept")
+	expectStatus(t, call(t, h, alex, "PUT", fmt.Sprintf("/api/items/%d", suggestion.ID), map[string]any{"name": "x"}), http.StatusConflict, "edit after accept")
+	if stored, _ := appdb.GetItemByID(db, suggestion.ID); stored.Name != "Wool sweater" {
+		t.Fatalf("edit after accept changed the item: %+v", stored)
+	}
 	expectStatus(t, call(t, h, lukas, "POST", fmt.Sprintf("/api/items/%d/claim", suggestion.ID), nil), http.StatusNoContent, "claim accepted")
 }
 
